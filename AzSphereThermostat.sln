@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.852
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AzSphereThermostat", "AzSphereThermostat\AzSphereThermostat.vcxproj", "{ECC33C82-0181-437C-B4C5-0F7B1A4E28D3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Release|ARM = Release|ARM
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ECC33C82-0181-437C-B4C5-0F7B1A4E28D3}.Debug|ARM.ActiveCfg = Debug|ARM
+		{ECC33C82-0181-437C-B4C5-0F7B1A4E28D3}.Debug|ARM.Build.0 = Debug|ARM
+		{ECC33C82-0181-437C-B4C5-0F7B1A4E28D3}.Release|ARM.ActiveCfg = Release|ARM
+		{ECC33C82-0181-437C-B4C5-0F7B1A4E28D3}.Release|ARM.Build.0 = Release|ARM
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {863A814F-FFDE-4EBE-AF77-D7AE059D3502}
+	EndGlobalSection
+EndGlobal
