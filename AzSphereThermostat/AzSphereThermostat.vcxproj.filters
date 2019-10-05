@@ -19,10 +19,22 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <UpToDateCheckInput Include="app_manifest.json" />
-  </ItemGroup>  
+    <ClCompile Include="HDC1080.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mt3620.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
   <ItemGroup>
-    <Image Include="Icon.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
+    <ClInclude Include="HDC1080.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mt3620_rdb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mt3620.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

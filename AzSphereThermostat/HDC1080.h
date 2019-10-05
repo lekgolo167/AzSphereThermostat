@@ -1,9 +1,14 @@
 #pragma once
 
-/* ------------------------------------------------------------ */
-/*				HDC1080 Sensor Function Declarations			*/
-/* ------------------------------------------------------------ */
-#include <inttypes.h>
+#define I2C_STRUCTS_VERSION 1
+#include <applibs/i2c.h>
+#include <applibs/log.h>
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
+#include <errno.h>
+
+#include "mt3620.h"
 
 /* ------------------------------------------------------------ */
 /*					Reg Addresses								*/
@@ -21,6 +26,7 @@
 /* ------------------------------------------------------------ */
 /*					Config Register Description					*/
 /* ------------------------------------------------------------ */
+
 /*
 NAME		BITS		DESCRIPTION				Value
 -----------------------------------------------------------------------------------------------------
@@ -48,23 +54,23 @@ HRES		[9:8]		humidity measure-		00	14-bit
 RESERVED	[7:0]		reserved				0	reserved, must be zero
 -----------------------------------------------------------------------------------------------------
 */
+
 /* ------------------------------------------------------------ */
 /*					Procedure Declarations						*/
 /* ------------------------------------------------------------ */
 
 struct HDC1080 {
-
+	float humidity;
+	float temp_C;
+	float temp_F;
 };
 
-float tempC2F(float tempC);
-float tempF2C(float tempF);
+uint16_t ByteTo2Bytes(const uint8_t* raw_data);
+bool CheckTransferSize(const char *desc, size_t expectedBytes, ssize_t actualBytes);
 
-void writeRegI2C(uint8_t bReg, uint16_t bVal);
-bool readRegI2C(uint8_t bReg, uint16_t &rVal, unsigned long delay_ms);
+bool HDC1080GetTemperature();
+bool HDC1080GetHumidity();
+void  HDC1080Begin(struct HDC1080* hdc1080_ptr);
 
-float getTemperature();
-float getHumidity();
-void  begin();
-
-float tempC2F(float tempC);
-float tempF2C(float tempF);
+float tempC2F();
+float tempF2C(float deg_F);

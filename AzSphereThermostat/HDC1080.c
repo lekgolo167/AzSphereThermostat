@@ -1,208 +1,136 @@
 #include "HDC1080.h"
 
-// DHTS11 ensor Function Definitions
-
 /* ------------------------------------------------------------ */
 /*				HDC1080 Sensor Function Definitions				*/
 /* ------------------------------------------------------------ */
 
+/// <summary>
+///     This struct is a delay between write and read. Sensor requires about 15 ms to convert data and send it on the bus
+/// </summary>
+const struct timespec delay = { 0, 20000000 };
 
-/* ------------------------------------------------------------ */
-/*				Procedure Definitions							*/
-/* ------------------------------------------------------------ */
+struct HDC1080* HDC1080_sensor;
 
-
-
-/* ------------------------------------------------------------ */
-/*        writeRegI2C
-**
-**        Synopsis:
-**				writeRegI2C(bConfig);
-**
-**        Parameters:
-**				uint8_t bReg - the register address to be written to
-**				uint16_t bVal - the bytes to be written
-**
-**        Return Values:
-**                void 
-**
-**        Errors:
-**			none
-**
-**        Description:
-**			This function writes to a register over I2C. 
-**
-*/
-
-void writeRegI2C(uint8_t bReg, uint16_t bVal)
+/// <summary>
+///     This function converts a 2 byte array into a uint16_t.
+/// </summary>
+uint16_t ByteTo2Bytes(const uint8_t* raw_data)
 {
-	Wire.beginTransmission(HDC1080_I2C_ADDR); // start transmission to device 
-	Wire.write(bReg);		        // send register address
-	Wire.write((bVal>>8)&0xff); // send upper byte
-	Wire.write((bVal)&0xff);    // send lower byte
-	Wire.endTransmission(); 	  // end transmission	
+	return (raw_data[0] << 8) | raw_data[1];
 }
 
-/* ------------------------------------------------------------ */
-/*        readRegI2C
-**
-**        Synopsis:
-**				readRegI2C(bReg, rVal, delay_ms);
-**
-**        Parameters:
-**				uint8_t bReg - the register address to be written to
-**				uint16_t* rVal - the return location for the read bytes
-**				unsigned int delay_ms - the number of milliseconds required for the HYGRO to convert the desired data
-**
-**        Return Values:
-**                bool success - whether valid data has been successfully captured
-**
-**        Errors:
-**			failure on bad rVal pointer
-**
-**        Description:
-**			This function reads a register over I2C. 
-**
-*/
- bool readRegI2C(uint8_t bReg, uint16_t &rVal, unsigned long delay_ms)
- {
-	int n, i;
-	Wire.beginTransmission(HYGROI2C_I2C_ADDR);
-	Wire.write(bReg); // send register address
-	if (delay_ms > 0)
-		delay(delay_ms); // wait for conversion to complete
-	n = Wire.requestFrom(HYGROI2C_I2C_ADDR, 2);
-	if (n != 2) {
-		for (i=0; i<n; i++)
-			Wire.read(); // ensure any bad bytes aren't left in the buffer
+/// <summary>
+///    Checks the number of transferred bytes for I2C functions and prints an error
+///    message if the functions failed or if the number of bytes is different than
+///    expected number of bytes to be transferred.
+/// </summary>
+/// <returns>true on success, or false on failure</returns>
+bool CheckTransferSize(const char *desc, size_t expectedBytes, ssize_t actualBytes)
+{
+	if (actualBytes < 0) {
+		Log_Debug("ERROR: %s: errno=%d (%s)\n", desc, errno, strerror(errno));
 		return false;
 	}
-	while (Wire.available()) {
-		rVal <<= 8;
-		rVal |= (uint16_t)Wire.read(); // shift and set in received bytes, most significant first
+
+	if (actualBytes != (ssize_t)expectedBytes) {
+		Log_Debug("ERROR: %s: transferred %zd bytes; expected %zd\n", desc, actualBytes,
+			expectedBytes);
+		return false;
 	}
+
 	return true;
 }
 
-
-/* ------------------------------------------------------------ */
-/*        begin
-**
-**        Synopsis:
-**				myHYGROI2C.begin();
-**
-**        Parameters:
-**
-**        Return Values:
-**                void 
-**
-**        Errors:
-**
-**        Description:
-**				This function initializes the I2C interface #1 that is used to communicate with PmodAD2.
-**
-*/
-void begin()
+/// <summary>
+///     This function initializes the HDC1080.
+/// </summary>
+void HDC1080Begin(struct HDC1080* hdc1080_ptr)
 {
-	Wire.begin();
-	delay(15);
-	writeRegI2C(HYGROI2C_CONFIG_REG, 0x00); // use non-sequential acquisition mode, all other config bits are default
+	HDC1080_sensor = hdc1080_ptr;
+	HDC1080_sensor->humidity = 0.0;
+	HDC1080_sensor->temp_C = 0.0;
+
+	// Send config register address then
+	// Send setup bytes, software reset bit ON, all others are default
+	const uint8_t HDC1080_config[] = { HDC1080_CONFIG_REG,  0x80, 0x00 };
+
+	ssize_t transferredBytes = I2CMaster_Write(ISU_2_Fd, HDC1080_I2C_ADDR, HDC1080_config, sizeof(HDC1080_config));
+	if(CheckTransferSize("GET init FAIL", sizeof(HDC1080_config), transferredBytes));
+		Log_Debug("HDC1080 Initialization Completed\n");
+
 }
 
-/* ------------------------------------------------------------ */
-/*        getTemperature
-**
-**        Synopsis:
-**				myHYGROI2C.getTemperature();
-**
-**        Parameters:
-**
-**        Return Values:
-**                float deg_c - the temperature reading in degrees celsius
-**
-**        Errors: - modify to manage read failures
-**
-**        Description:
-**				This function captures a temperature reading from the Pmod HYGRO.
-**
-*/
-float getTemperature()
+/// <summary>
+///     This function captures a temperature reading from the HDC1080.
+/// </summary>
+bool HDC1080GetTemperature()
 {
-	uint16_t raw_t;
-	float deg_c;
-	readRegI2C(HYGROI2C_TMP_REG, raw_t, 7); // conversion time for temperature at 14 bit resolution is 6.5 ms
-	deg_c = (float)raw_t / 0x10000;
-	deg_c *= 165.0;
-	deg_c -= 40.0; // conversion provided in reference manual
-	return deg_c;
+	uint8_t raw_temperature[] = {0x0, 0x0};
+	const uint8_t i2c_commands[] = { HDC1080_TMP_REG };
+
+	// Request temperature information
+	ssize_t transferredBytes = I2CMaster_Write(ISU_2_Fd, HDC1080_I2C_ADDR, i2c_commands, sizeof(i2c_commands));
+	if (!CheckTransferSize("HDC1080: Failed to write for Temperature request", sizeof(i2c_commands), transferredBytes))
+		return false;
+
+	// Wait for sensor to convert data
+	nanosleep(&delay, NULL);
+
+	// Read temperature bytes
+	transferredBytes = I2CMaster_Read(ISU_2_Fd, HDC1080_I2C_ADDR, raw_temperature, 2);
+	if (!CheckTransferSize("HDC1080: Failed to read the Temperature bytes", sizeof(raw_temperature), transferredBytes))
+		return false;
+
+	// Convert raw data
+	uint16_t raw_t = ByteTo2Bytes(raw_temperature);
+	HDC1080_sensor->temp_C = (float)raw_t / 0x10000;
+	HDC1080_sensor->temp_C *= 165.0;
+	HDC1080_sensor->temp_C -= 40.0; // conversion provided in reference manual
+
+	return true;
 }
 
-/* ------------------------------------------------------------ */
-/*        getHumidity
-**
-**        Synopsis:
-**				HYGROI2C.getHumidity();
-**
-**        Parameters:
-**
-**        Return Values:
-**                float per_rh - the humidity reading in percent relative humidity.
-**
-**        Errors: - modify to manage read failures
-**
-**        Description:
-**				This function captures a humidity reading from the Pmod HYGRO.
-**
-*/
-float getHumidity() {
-	uint16_t raw_h;
-	float per_rh;
-	readRegI2C(HYGROI2C_HUM_REG, raw_h, 7); // conversion time for humidity at 14 bit resolution is 6.35 ms
-	per_rh = (float)raw_h / 0x10000;
-	per_rh *= 100.0; // conversion provided in reference manual
-	return per_rh;
+/// <summary>
+///     This function captures a relative humidity reading from the HDC1080.
+/// </summary>
+bool HDC1080GetHumidity()
+{
+	uint8_t raw_humidity[] = { 0x0, 0x0 };
+	const uint8_t i2c_commands[] = { HDC1080_HUM_REG };
+
+	// Request humidity information
+	ssize_t transferredBytes = I2CMaster_Write(ISU_2_Fd, HDC1080_I2C_ADDR, i2c_commands , sizeof(i2c_commands));
+	if (!CheckTransferSize("HDC1080: Failed to write for Humidity request", sizeof(i2c_commands), transferredBytes))
+		return false;
+
+	// Wait for sensor to convert data
+	nanosleep(&delay, NULL);
+
+	// Read humidity bytes
+	transferredBytes = I2CMaster_Read(ISU_2_Fd, HDC1080_I2C_ADDR, raw_humidity, sizeof(raw_humidity));
+	if (!CheckTransferSize("HDC1080: Failed to read the Humidity bytes", sizeof(raw_humidity), transferredBytes))
+		return false;
+
+	// Convert raw data
+	uint16_t raw_h = ByteTo2Bytes(raw_humidity);
+	HDC1080_sensor->humidity = (float)raw_h / 0x10000;
+	HDC1080_sensor->humidity *= 100.0; // conversion provided in reference manual
+
+	return true;
 }
 
-/* ------------------------------------------------------------ */
-/*        tempF2C
-**
-**        Synopsis:
-**				HYGROI2C.tempF2C(deg_f);
-**
-**        Parameters:
-**				float deg_f - the temperature in degrees fahrenheit
-**        Return Values:
-**              float deg_c - the temperature in degrees celsius
-**
-**        Errors:
-**
-**        Description:
-**				This function converts a fahrenheit temperature to celsius
-**
-*/
-float tempF2C(float deg_f)
+/// <summary>
+///     This function converts a celsius temperature to fahrenheit.
+/// </summary>
+float tempC2F()
 {
-	return (deg_f - 32) / 1.8;
+	return HDC1080_sensor->temp_C * 1.8 + 32;
 }
 
-/* ------------------------------------------------------------ */
-/*        tempC2F
-**
-**        Synopsis:
-**				HYGROI2C.tempC2F(deg_c);
-**
-**        Parameters:
-**              float deg_c - the temperature in degrees celsius
-**        Return Values:
-**				float deg_f - the temperature in degrees fahrenheit
-**
-**        Errors:
-**
-**        Description:
-**				This function converts a celsius temperature to fahrenheit
-**
-*/
-float tempC2F(float deg_c)
+/// <summary>
+///     This function converts a fahrenheit temperature to celsius.
+/// </summary>
+float tempF2C(float deg_F)
 {
-	return deg_c * 1.8 + 32;
+	return (deg_F - 32) * (5/9);
 }

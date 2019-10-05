@@ -6,6 +6,7 @@
   "CmdArgs": [],
   "Capabilities": {
     "AllowedConnections": [],
+    "I2cMaster": ["ISU2"],
     "Gpio": [ 9 ],
     "Uart": [],
     "WifiConfig": false
