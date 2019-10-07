@@ -21,16 +21,16 @@ void initCycle(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1
 void runCycle()
 {
 	// Manual override to either run the furnace or turn it off for one cycle
-	bool manualMode = false;
+	bool autoMode = true;
 
 	// Stay in standby until room drops below threshold temperature
 	standBy();
 
 	// Once room is below threshold, check if the furnace should be on
-	if (preRunChecklist(manualMode))
+	if (preRunChecklist(autoMode))
 	{
 		// Run furnace until room reaches threshold
-		runFurnace();
+		runFurnace(userSettings->targetTemp_C);
 	}
 
 };
@@ -45,6 +45,12 @@ void standBy()
 		if (userSettings->targetTemp_C - roomTemp_C >= userSettings->temp_C_Threshold)
 		{
 			break;
+		}
+
+		// Maintain room above freezing no matter what the schedule is
+		if (roomTemp_C <= (userSettings->baselineTemp_C - userSettings->temp_C_Threshold))
+		{
+			runFurnace(userSettings->baselineTemp_C);
 		}
 	}
 };
@@ -76,7 +82,7 @@ float sampleTemperature()
 	return (averageTemp_C / userSettings->totalSamples);
 };
 
-void runFurnace()
+void runFurnace(float targetTemp_C)
 {
 	// Turn furnace ON
 	furnaceRelay(true);
@@ -86,7 +92,7 @@ void runFurnace()
 		float roomTemp_C = sampleTemperature();
 
 		// Check if room is above threshold temperature
-		if (roomTemp_C - userSettings->targetTemp_C >= userSettings->temp_C_Threshold)
+		if (roomTemp_C - targetTemp_C >= userSettings->temp_C_Threshold)
 		{
 			break;
 		}
@@ -97,10 +103,10 @@ void runFurnace()
 	furnaceRelay(false);
 };
 
-bool preRunChecklist(bool manualMode)
+bool preRunChecklist(bool autoMode)
 {
 	// Check manual mode override
-	if (manualMode)
+	if (autoMode)
 	{
 		return false;
 	}
