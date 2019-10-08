@@ -7,6 +7,7 @@
 #pragma once
 
 extern int ISU_2_Fd;
+extern int GPIO_relay_Fd;
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

@@ -1,5 +1,8 @@
 #include "thermostat.h"
 
+volatile int relayON = false;
+volatile bool autoMode;
+
 struct thermostatSettings *userSettings;
 struct HDC1080 *HDC1080_sensor;
 
@@ -8,6 +11,7 @@ void initCycle(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1
 {
 	userSettings = userSettings_ptr;
 
+	// TODO remove hardcoded defaults and replace these with saved defaults from EEPROM
 	userSettings->targetTemp_C = 23.0;
 	userSettings->temp_C_Threshold = 2.0;
 	userSettings->totalSamples = 5;
@@ -21,7 +25,7 @@ void initCycle(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1
 void runCycle()
 {
 	// Manual override to either run the furnace or turn it off for one cycle
-	bool autoMode = true;
+	autoMode = true;
 
 	// Stay in standby until room drops below threshold temperature
 	standBy();
@@ -42,7 +46,7 @@ void standBy()
 		float roomTemp_C = sampleTemperature();
 
 		// Check if room is below threshold temperature
-		if (userSettings->targetTemp_C - roomTemp_C >= userSettings->temp_C_Threshold)
+		if (roomTemp_C <= (userSettings->targetTemp_C - userSettings->temp_C_Threshold))
 		{
 			break;
 		}
@@ -84,6 +88,14 @@ float sampleTemperature()
 
 void runFurnace(float targetTemp_C)
 {
+	if (!autoMode) { // If manual override is on, check temp first then run furnace
+		float roomTemp_C = sampleTemperature();// Change to single sample?
+		if (roomTemp_C >= (targetTemp_C + userSettings->temp_C_Threshold))
+		{
+			return;
+		}
+	}
+
 	// Turn furnace ON
 	furnaceRelay(true);
 
@@ -92,11 +104,12 @@ void runFurnace(float targetTemp_C)
 		float roomTemp_C = sampleTemperature();
 
 		// Check if room is above threshold temperature
-		if (roomTemp_C - targetTemp_C >= userSettings->temp_C_Threshold)
+		if (roomTemp_C  >= (targetTemp_C + userSettings->temp_C_Threshold))
 		{
 			break;
 		}
-		// TODO if at the end of a schedule cycle, furnace needs to trun off regardless of what the temp is
+		// If at the end of a schedule cycle, furnace needs to trun off unless temp is below baseline
+		if (!checkSchedule() && roomTemp_C >= (userSettings->baselineTemp_C + userSettings->temp_C_Threshold)) break; 
 	}
 
 	// Turn furnace OFF
@@ -106,19 +119,19 @@ void runFurnace(float targetTemp_C)
 bool preRunChecklist(bool autoMode)
 {
 	// Check manual mode override
-	if (autoMode)
+	if (!autoMode)
 	{
 		return false;
 	}
 
 	// Check schedule
-	if ()
+	if (!check())
 	{
 		return false;
 	}
 
 	// Check motion sensor
-	if ()
+	if (!motion())
 	{
 		return false;
 	}
@@ -126,7 +139,14 @@ bool preRunChecklist(bool autoMode)
 	return true;
 };
 
-void furnaceRelay(bool state)
+void furnaceRelay(bool powerON)
 {
-	// TODO toggle furnace relay
+	const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
+
+	if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
+	{
+		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low); // connect opendrain
+		nanosleep(&sleepTime, NULL);
+		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
+	}
 };

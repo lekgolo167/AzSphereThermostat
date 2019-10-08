@@ -1,6 +1,7 @@
 #pragma once
 #include <applibs/i2c.h>
 #include <applibs/log.h>
+#include <applibs/gpio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
@@ -8,6 +9,10 @@
 
 #include "mt3620.h"
 #include "HDC1080.h"
+#include "HC-SR04.h"
+#include "schedule.h"
+
+extern int relayON;
 
 /// <summary>
 ///     This function saves the current user settings
@@ -16,6 +21,7 @@ struct thermostatSettings
 {
 	float targetTemp_C;
 	float temp_C_Threshold;
+	float baselineTemp_C;
 	struct timespec samplePeriod;
 	unsigned int totalSamples;
 };
@@ -43,11 +49,14 @@ float sampleTemperature();
 /// <summary>
 ///     This function turns on the furnace relay then samples the air until a threshold is reached
 /// </summary>
-void runFurnace();
+void runFurnace(float targetTemp_C);
 
 /// <summary>
 ///     This function checks the pre-requirements to run the furnace
 /// </summary>
-bool preRunChecklist();
+bool preRunChecklist(bool autoMode);
 
+/// <summary>
+///     This function toogles the furnace relay
+/// </summary>
 void furnaceRelay(bool state);
