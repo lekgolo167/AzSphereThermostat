@@ -1,1 +1,2 @@
 # AzSphereThermostat
+By MCRUMP & DROLL
