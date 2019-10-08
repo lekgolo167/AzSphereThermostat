@@ -24,18 +24,22 @@ void initCycle(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1
 
 void runCycle()
 {
-	// Manual override to either run the furnace or turn it off for one cycle
-	autoMode = true;
+	//load new cycle and populate settings struct
+	initCycle(userSettings, HDC1080_sensor);
+	do {
+		// Stay in standby until room drops below threshold temperature
+		standBy();
 
-	// Stay in standby until room drops below threshold temperature
-	standBy();
+		// Once room is below threshold, check if the furnace should be on
+		if (preRunChecklist())
+		{
+			// Run furnace until room reaches threshold
+			runFurnace(userSettings->targetTemp_C);
+		}
 
-	// Once room is below threshold, check if the furnace should be on
-	if (preRunChecklist(autoMode))
-	{
-		// Run furnace until room reaches threshold
-		runFurnace(userSettings->targetTemp_C);
-	}
+		// check if schedule expired
+	} while();
+
 
 };
 
@@ -88,14 +92,6 @@ float sampleTemperature()
 
 void runFurnace(float targetTemp_C)
 {
-	if (!autoMode) { // If manual override is on, check temp first then run furnace
-		float roomTemp_C = sampleTemperature();// Change to single sample?
-		if (roomTemp_C >= (targetTemp_C + userSettings->temp_C_Threshold))
-		{
-			return;
-		}
-	}
-
 	// Turn furnace ON
 	furnaceRelay(true);
 

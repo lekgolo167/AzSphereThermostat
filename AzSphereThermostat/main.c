@@ -56,10 +56,10 @@ int main(void)
 	struct thermostateSettings *userSettings;
 
 	initI2C();
-	initCycle(userSettings, HDC1080_sensor);
 	initGPIO();
 
     while (true) {
+		//if not away else maintain baseline
 		runCycle();
     }
 }
