@@ -25,6 +25,15 @@
     <ClCompile Include="mt3620.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="thermostat.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="schedule.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HC-SR04.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HDC1080.h">
@@ -34,6 +43,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mt3620.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="thermostat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="schedule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HC-SR04.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

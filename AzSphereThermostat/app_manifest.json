@@ -7,7 +7,7 @@
   "Capabilities": {
     "AllowedConnections": [],
     "I2cMaster": ["ISU2"],
-    "Gpio": [ 9 ],
+    "Gpio": [ 10 ],
     "Uart": [],
     "WifiConfig": false
   },

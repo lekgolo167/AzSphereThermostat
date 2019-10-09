@@ -6,16 +6,17 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "mt3620.h"
 #include "HDC1080.h"
 #include "HC-SR04.h"
 #include "schedule.h"
 
-extern int relayON;
+volatile int relayON;
 
 /// <summary>
-///     This function saves the current user settings
+///     This struct saves the current user settings
 /// </summary>
 struct thermostatSettings
 {
@@ -27,19 +28,19 @@ struct thermostatSettings
 };
 
 /// <summary>
-///     This initializes the cycle of the furnace
+///     This function sets up the struct pointers to run the thermostat
 /// </summary>
-void initCycle(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr);
+void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr);
 
 /// <summary>
-///     This is the cycle of the furnace from one on state to one off state
+///     Logic to maintain temperature
 /// </summary>
 void runCycle();
 
 /// <summary>
 ///     This function waits for the conditions to be right to run the furnace
 /// </summary>
-void standBy();
+float standBy();
 
 /// <summary>
 ///     This function samples the air and returns an average temp over the course of a set time period
@@ -54,7 +55,7 @@ void runFurnace(float targetTemp_C);
 /// <summary>
 ///     This function checks the pre-requirements to run the furnace
 /// </summary>
-bool preRunChecklist(bool autoMode);
+bool preRunChecklist(float roomTemp_C);
 
 /// <summary>
 ///     This function toogles the furnace relay

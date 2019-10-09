@@ -37,15 +37,21 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="HC-SR04.c" />
     <ClCompile Include="HDC1080.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="mt3620.c" />
+    <ClCompile Include="schedule.c" />
+    <ClCompile Include="thermostat.c" />
     <UpToDateCheckInput Include="app_manifest.json" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="HC-SR04.h" />
     <ClInclude Include="HDC1080.h" />
     <ClInclude Include="mt3620.h" />
     <ClInclude Include="mt3620_rdb.h" />
+    <ClInclude Include="schedule.h" />
+    <ClInclude Include="thermostat.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

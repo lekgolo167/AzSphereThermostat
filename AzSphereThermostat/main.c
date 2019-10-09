@@ -12,8 +12,9 @@
 #include <applibs/gpio.h>
 
 #include "mt3620.h"
-#include "HDC1080.h"
 #include "thermostat.h"
+#include "HDC1080.h"
+
 
 static int initI2C(void) {
 
@@ -40,7 +41,7 @@ static int initI2C(void) {
 
 static int initGPIO()
 {
-	GPIO_relay_Fd = GPIO_OpenAsOutput(9, GPIO_OutputMode_PushPull, GPIO_Value_High);
+	GPIO_relay_Fd = GPIO_OpenAsOutput(10, GPIO_OutputMode_PushPull, GPIO_Value_Low);
 	if (GPIO_relay_Fd < 0) {
 		Log_Debug(
 			"Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
@@ -52,11 +53,13 @@ static int initGPIO()
 
 int main(void)
 {
-	struct HDC1080 *HDC1080_sensor;
-	struct thermostateSettings *userSettings;
-
+	struct HDC1080 HDC1080_sensor;
+	struct thermostatSettings userSettings;
+	
 	initI2C();
 	initGPIO();
+	HDC1080Begin(&HDC1080_sensor);
+	initThermostat(&userSettings, &HDC1080_sensor);
 
     while (true) {
 		//if not away else maintain baseline
