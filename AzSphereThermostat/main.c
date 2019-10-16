@@ -14,6 +14,7 @@
 #include "mt3620.h"
 #include "thermostat.h"
 #include "HDC1080.h"
+#include "oled.h"
 
 
 static int initI2C(void) {
@@ -60,6 +61,8 @@ int main(void)
 	initGPIO();
 	HDC1080Begin(&HDC1080_sensor);
 	initThermostat(&userSettings, &HDC1080_sensor);
+	oled_init();
+	
 
     while (true) {
 		//if not away else maintain baseline

@@ -1,5 +1,5 @@
 #include "thermostat.h"
-
+#include "oled.h"
 struct thermostatSettings *userSettings;
 struct HDC1080 *HDC1080_sensor;
 
@@ -43,8 +43,9 @@ float standBy()
 
 	while (1) 
 	{
-		 roomTemp_C = sampleTemperature();
-
+		//oled_draw_logo();
+		roomTemp_C = sampleTemperature();
+		update_other(roomTemp_C, tempC2F(), 0.0);
 		// Check if room is below threshold temperature
 		if (roomTemp_C <= (userSettings->targetTemp_C - userSettings->temp_C_Threshold))
 		{
@@ -63,7 +64,7 @@ void runFurnace(float targetTemp_C)
 	while (1)
 	{
 		float roomTemp_C = sampleTemperature();
-
+		update_other(roomTemp_C, tempC2F(), 0.0);
 		// Check if room is above threshold temperature
 		if (roomTemp_C >= (targetTemp_C + userSettings->temp_C_Threshold))
 		{
