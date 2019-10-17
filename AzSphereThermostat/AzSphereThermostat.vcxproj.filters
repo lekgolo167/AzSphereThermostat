@@ -34,6 +34,15 @@
     <ClCompile Include="HC-SR04.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="oled.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sd1306.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="epoll_timerfd_utilities.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HDC1080.h">
@@ -52,6 +61,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HC-SR04.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="oled.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sd1306.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="epoll_timerfd_utilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

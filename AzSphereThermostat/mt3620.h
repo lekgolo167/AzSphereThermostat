@@ -5,9 +5,33 @@
    // and provides the header definition and application manifest values required to use them.
 
 #pragma once
+#include <applibs/gpio.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 extern int ISU_2_Fd;
 extern int GPIO_relay_Fd;
+
+extern int rotary_A_Fd;
+extern int rotary_B_Fd;
+extern int rotary_SW_Fd;
+
+extern GPIO_Value_Type rotary_A_State;
+extern GPIO_Value_Type rotary_B_State;
+extern GPIO_Value_Type rotary_SW_State;
+extern GPIO_Value_Type rotary_A_LastState;
+extern GPIO_Value_Type rotary_B_LastState;
+extern GPIO_Value_Type rotary_SW_LastState;
+
+extern int buttonAGpioFd;
+extern int buttonBGpioFd;
+
+extern GPIO_Value_Type buttonAState;
+extern GPIO_Value_Type buttonBState;
+
+extern int8_t oled_scroll_counter;
+extern int8_t oled_menu_state;
+extern bool edit;
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

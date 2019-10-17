@@ -43,6 +43,14 @@ extern uint8_t sd1306_init(void);
 void sd1306_draw_pixel(int32_t x, int32_t y, uint8_t color);
 
 /**
+  * @brief  Invert pixels at specified coordinates
+  * @param  x: x coordinate
+  * @param  y: y coordinate
+  * @retval None.
+  */
+void sd1306_invert_line(int32_t x_start, int32_t x_end, int32_t y_start, int32_t height);
+
+/**
   * @brief  Draw a line
   * @param  x1: x coordinate of start point
   * @param  y1: y coordinate of start point

@@ -37,20 +37,27 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="epoll_timerfd_utilities.c" />
     <ClCompile Include="HC-SR04.c" />
     <ClCompile Include="HDC1080.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="mt3620.c" />
+    <ClCompile Include="oled.c" />
     <ClCompile Include="schedule.c" />
+    <ClCompile Include="sd1306.c" />
     <ClCompile Include="thermostat.c" />
     <UpToDateCheckInput Include="app_manifest.json" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="epoll_timerfd_utilities.h" />
+    <ClInclude Include="font.h" />
     <ClInclude Include="HC-SR04.h" />
     <ClInclude Include="HDC1080.h" />
     <ClInclude Include="mt3620.h" />
     <ClInclude Include="mt3620_rdb.h" />
+    <ClInclude Include="oled.h" />
     <ClInclude Include="schedule.h" />
+    <ClInclude Include="sd1306.h" />
     <ClInclude Include="thermostat.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,97 +1,64 @@
-/***************************************************************************************************
-   Name: OLED.c
-   Sphere OS: 19.05
-****************************************************************************************************/
-
 #include "oled.h"
 #include <math.h>
-
-uint8_t oled_state = 0;
-
-// Data of sensors (Acceleration, Gyro, Temperature, Presure)
-sensor_var sensor_data;
-
-// Data of network status
-network_var network_data;
-
-// Data of light sensor
-float light_sensor;
-
-// Altitude
-extern float altitude;
-
-// Array with messages from Azure
-//extern uint8_t oled_ms1[CLOUD_MSG_SIZE];
-//extern uint8_t oled_ms2[CLOUD_MSG_SIZE];
-//extern uint8_t oled_ms3[CLOUD_MSG_SIZE];
-//extern uint8_t oled_ms4[CLOUD_MSG_SIZE];
+#include <time.h>
 
 // Status variables of I2C bus and RT core
 extern uint8_t RTCore_status;
 extern uint8_t lsm6dso_status;
 extern uint8_t lps22hh_status;
 
+struct HDC1080* sensor;
+static float temporary = 20.0;
 /**
   * @brief  OLED initialization.
   * @param  None.
   * @retval Positive if was unsuccefully, zero if was succefully.
   */
-uint8_t oled_init()
+uint8_t oled_init(struct HDC1080* ptr)
 {
+	sensor = ptr;
 	return sd1306_init();
 }
 
 // State machine to change the OLED status
-void update_oled()
+void update_oled(float c, float f, float h, float t)
 {
-	switch (oled_state)
+	switch (oled_menu_state)
 	{
 		case 0:
 		{
-			oled_i2c_bus_status(3);
+			oled_draw_logo();
 		}
 		break;
 		case 1:
 		{
-			update_network();	
+			set_temp(c, temporary);
 		}
 		break;
 		case 2:
 		{
-			clear_oled_buffer();
-			sd1306_draw_string(0, 0, " Cloud Twin", FONT_SIZE_TITLE, white_pixel);
-
-			//sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, oled_ms1, FONT_SIZE_LINE, white_pixel);
-			//sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, oled_ms2, FONT_SIZE_LINE, white_pixel);
-			//sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, oled_ms3, FONT_SIZE_LINE, white_pixel);
-			//sd1306_draw_string(OLED_LINE_4_X, OLED_LINE_4_Y, oled_ms4, FONT_SIZE_LINE, white_pixel);
-
-			sd1306_refresh();
+			update_other(c, f,h);
 		}
 		break;
 		case 3:
 		{
-			update_accel(sensor_data.acceleration_mg[0], sensor_data.acceleration_mg[1], sensor_data.acceleration_mg[2]);
 		}
 		break;
 		case 4:
 		{
-			update_angular_rate(sensor_data.angular_rate_dps[0], sensor_data.angular_rate_dps[1], sensor_data.angular_rate_dps[2]);
 		}
 		break;
 		case 5:
 		{
-			update_environ(sensor_data.lsm6dsoTemperature_degC, sensor_data.lps22hhTemperature_degC, sensor_data.lps22hhpressure_hPa);
 		}
 		break;
 		case 6:
 		{
-			update_other(light_sensor, 0, 0); 
 		}
 		break;
 		case 7:
 		{
-			oled_draw_logo();
+			
 		}
 		break;
 
@@ -228,290 +195,6 @@ void oled_i2c_bus_status(uint8_t sensor_number)
 	sd1306_refresh();
 }
 
-/**
-  * @brief  Get the channel at given frequency
-  * @param  freq_MHz: Frequency in MHz
-  * @retval Channel.
-  */
-uint16_t get_channel(uint16_t freq_MHz)
-{
-	if (freq_MHz < 5000 && freq_MHz > 2400)
-	{
-		// channel of in 2.4 GHz band
-		freq_MHz -= 2407;
-	}
-	else if(freq_MHz > 5000)
-	{
-		// channel of in 5 GHz band
-		freq_MHz -= 5000;
-	}
-	else
-	{
-		// channel not in 2.4 or 5 GHz bands
-		freq_MHz = 0;
-	}
-
-	freq_MHz /= 5;
-
-	return freq_MHz;
-}
-
-/**
-  * @brief  Template to show Network status
-  * @param  None
-  * @retval None.
-  */
-void update_network()
-{
-	uint8_t string_data[10];
-	uint16_t channel;
-	uint8_t aux_size;
-	
-	// Strings for labels
-	uint8_t str_SSID[] = "SSID:";
-	uint8_t str_freq[] = "Freq:";
-	uint8_t str_RSSI[] = "RSSI:";
-	uint8_t str_chan[] = "Chan:";
-
-	uint8_t aux_data_str[] = "%d";
-
-	// Clear oled buffer
-	clear_oled_buffer();
-
-	// Draw the title
-	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "  Network", FONT_SIZE_TITLE, white_pixel);
-
-	// Draw a label at line 1
-	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_SSID, FONT_SIZE_LINE, white_pixel);
-	// Draw SSID string
-	sd1306_draw_string(sizeof(str_SSID)*6, OLED_LINE_1_Y, network_data.SSID, FONT_SIZE_LINE, white_pixel);
-
-
-	// Draw a label at line 2
-	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, str_freq, FONT_SIZE_LINE, white_pixel);
-
-	// Convert frequency value to string
-	intToStr(network_data.frequency_MHz, string_data, 1);
-
-	// Draw frequency value
-	sd1306_draw_string(sizeof(str_freq) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units
-	//sd1306_draw_string(sizeof(str_freq) * 6 + (get_str_size(string_data)+1) * 6, OLED_LINE_2_Y, "MHz", FONT_SIZE_LINE, white_pixel);
-
-
-	// Draw channel label at line 2
-	sd1306_draw_string(sizeof(str_freq) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, str_chan, FONT_SIZE_LINE, white_pixel);
-
-	channel = get_channel(network_data.frequency_MHz);
-
-	aux_size = get_str_size(string_data);
-
-	// Convert frequency value to string
-	intToStr(channel, string_data, 1);
-
-	// Draw channel value
-	sd1306_draw_string(sizeof(str_freq) * 6 + (aux_size + sizeof(str_chan)+ 1) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
-
-	// Draw a label at line 3
-	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, str_RSSI, FONT_SIZE_LINE, white_pixel);
-
-	// Convert RSSI value to string (Currently RSSI is always zero)
-	intToStr(network_data.rssi, string_data, 1);
-
-	strcpy(string_data, "%d");
-	snprintf(string_data, 10, aux_data_str, network_data.rssi);
-
-	// Draw RSSI value
-	sd1306_draw_string(sizeof(str_RSSI) * 6, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
-
-	// Draw dBm unit
-	sd1306_draw_string(sizeof(str_freq) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "dBm", FONT_SIZE_LINE, white_pixel);
-
-	// Send the buffer to OLED RAM
-	sd1306_refresh();
-}
-
-/**
-  * @brief  Template to show Acceleration data
-  * @param  x: Acceleration in axis X
-  * @param  y: Acceleration in axis Y
-  * @param  z: Acceleration in axis Z
-  * @retval None.
-  */
-void update_accel(float x, float y, float z)
-{
-	uint32_t i;
-	uint8_t string_data[10];
-
-	// Strings for labels
-	uint8_t str_ax[] = "Axis X:";
-	uint8_t str_ay[] = "Axis Y:";
-	uint8_t str_az[] = "Axis Z:";
-
-	// Clear OLED buffer
-	clear_oled_buffer();
-
-	// Draw the title
-	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "   Accel.", FONT_SIZE_TITLE, white_pixel);
-
-	// Convert x value to string
-	ftoa(x, string_data, 2);
-
-	// Draw a label at line 1
-	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_ax, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of x
-	sd1306_draw_string(sizeof(str_ax) * 6, OLED_LINE_1_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of x
-	sd1306_draw_string(sizeof(str_ax) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_1_Y, "mg", FONT_SIZE_LINE, white_pixel);
-
-	// Convert y value to string
-	ftoa(y, string_data, 2);
-
-	// Draw a label at line 2
-	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, str_ay, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of y
-	sd1306_draw_string(sizeof(str_az) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of y
-	sd1306_draw_string(sizeof(str_ay) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, "mg", FONT_SIZE_LINE, white_pixel);
-
-	// Convert z value to string
-	ftoa(z, string_data, 2);
-
-	// Draw a label at line 3
-	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, str_az, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of z
-	sd1306_draw_string(sizeof(str_az) * 6, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of z
-	sd1306_draw_string(sizeof(str_az) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "mg", FONT_SIZE_LINE, white_pixel);
-
-	// Send the buffer to OLED RAM
-	sd1306_refresh();
-}
-
-/**
-  * @brief  Template to show Angular rate data
-  * @param  x: Angular rate in axis X
-  * @param  y: Angular rate in axis Y
-  * @param  z: Angular rate in axis Z
-  * @retval None.
-  */
-void update_angular_rate(float x, float y, float z)
-{
-	uint32_t i;
-	uint8_t string_data[10];
-
-	// Strings for labels
-	uint8_t str_gx[] = "GX:";
-	uint8_t str_gy[] = "GY:";
-	uint8_t str_gz[] = "GZ:";
-
-	// Clear OLED buffer
-	clear_oled_buffer();
-
-	// Draw the title
-	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "   Gyro.", FONT_SIZE_TITLE, white_pixel);
-
-	// Convert x value to string
-	ftoa(x, string_data, 2);
-
-	// Draw a label at line 1
-	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_gx, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of x
-	sd1306_draw_string(sizeof(str_gx) * 6, OLED_LINE_1_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of x
-	sd1306_draw_string(sizeof(str_gx) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_1_Y, "dps", FONT_SIZE_LINE, white_pixel);
-
-	// Convert y value to string
-	ftoa(y, string_data, 2);
-
-	// Draw a label at line 2
-	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, str_gy, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of y
-	sd1306_draw_string(sizeof(str_gy) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of y
-	sd1306_draw_string(sizeof(str_gy) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, "dps", FONT_SIZE_LINE, white_pixel);
-	
-	// Convert z value to string
-	ftoa(z, string_data, 2);
-
-	// Draw a label at line 3
-	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, str_gz, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of z
-	sd1306_draw_string(sizeof(str_gz) * 6, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of z
-	sd1306_draw_string(sizeof(str_gz) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "dps", FONT_SIZE_LINE, white_pixel);
-
-	// Send the buffer to OLED RAM
-	sd1306_refresh();
-}
-
-/**
-  * @brief  Template to show Enviromental data
-  * @param  temp1: Temperature 1 in celsius degrees
-  * @param  temp2: Temperature 2 in celsius degrees
-  * @param  atm: Presure in hPa
-  * @retval None.
-  */
-void update_environ(float temp1, float temp2, float atm)
-{
-	uint32_t i;
-	uint8_t string_data[10];
-	
-	// Strings for labels
-	uint8_t str_temp1[] = "Temp1:";
-	uint8_t str_temp2[] = "Temp2:";
-	uint8_t str_atm[] = "Barom:";
-	uint8_t str_altitude[] = "Elev :";
-
-	// Clear OLED buffer
-	clear_oled_buffer();
-
-	// Draw the title
-	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "  Environ.", FONT_SIZE_TITLE, white_pixel);
-
-	// Convert temp1 value to string
-	ftoa(temp1, string_data, 2);
-
-	// Draw a label at line 1
-	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_temp1, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of temp1
-	sd1306_draw_string(sizeof(str_temp1) * 6, OLED_LINE_1_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of temp1
-	sd1306_draw_string(sizeof(str_temp1) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_1_Y, "°C", FONT_SIZE_LINE, white_pixel);
-
-	// Convert temp2 value to string
-	ftoa(temp2, string_data, 2);
-
-	// Draw a label at line 2
-	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, str_temp2, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of temp2
-	sd1306_draw_string(sizeof(str_temp2) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of temp2
-	sd1306_draw_string(sizeof(str_temp2) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, "°C", FONT_SIZE_LINE, white_pixel);
-
-	// Convert atm value to string
-	ftoa(atm, string_data, 2);
-
-	// Draw a label at line 3
-	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, str_atm, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of atm
-	sd1306_draw_string(sizeof(str_atm) * 6, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of atm
-	sd1306_draw_string(sizeof(str_atm) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "hPa", FONT_SIZE_LINE, white_pixel);
-
-	// Convert altitude value to string
-	ftoa(altitude, string_data, 2);
-
-	// Draw a label at line 4
-	sd1306_draw_string(OLED_LINE_4_X, OLED_LINE_4_Y, str_altitude, FONT_SIZE_LINE, white_pixel);
-	// Draw the value of altitude
-	sd1306_draw_string(sizeof(str_altitude) * 6, OLED_LINE_4_Y, string_data, FONT_SIZE_LINE, white_pixel);
-	// Draw the units of altitude
-	sd1306_draw_string(sizeof(str_altitude) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_4_Y, "m", FONT_SIZE_LINE, white_pixel);
-
-	// Send the buffer to OLED RAM
-	sd1306_refresh();
-}
 
 /**
   * @brief  Template to show other variables curently not available
@@ -522,15 +205,15 @@ void update_environ(float temp1, float temp2, float atm)
   */
 void update_other(float x, float y, float z)
 {
-	static float cnt = 0;
 	uint32_t i;
 	uint8_t string_data[10];
 
 	// Strings for labels
 	uint8_t str_light[] = "HDC1080: ";
 	uint8_t str_tbd1[] = "HDC1080: ";
-	uint8_t str_tbd2[] = "TBD 2:";
+	uint8_t str_tbd2[] = "Humidity:";
 
+	auto lines[] = { OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
 	// Clear OLED buffer
 	clear_oled_buffer();
 
@@ -558,19 +241,72 @@ void update_other(float x, float y, float z)
 	sd1306_draw_string(sizeof(str_tbd1) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, " F°", FONT_SIZE_LINE, white_pixel);
 
 	// Convert z value to string
-	ftoa(cnt, string_data, 2);
-	cnt += 0.01;
+	ftoa(z, string_data, 2);
 	// Draw a label at line 3
 	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, str_tbd2, FONT_SIZE_LINE, white_pixel);
 	// Draw the value of z
 	sd1306_draw_string(sizeof(str_tbd2) * 6, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
 	// Draw the units of z
-	sd1306_draw_string(sizeof(str_tbd2) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "Units", FONT_SIZE_LINE, white_pixel);
-
+	sd1306_draw_string(sizeof(str_tbd2) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "%", FONT_SIZE_LINE, white_pixel);
+	if(oled_scroll_counter >=0 && oled_scroll_counter <=6)
+	sd1306_invert_line(0, OLED_WIDTH, lines[oled_scroll_counter/2]-1, lines[oled_scroll_counter / 2] +9);
+	else {
+		sd1306_invert_line(0, OLED_WIDTH, oled_scroll_counter - 6, oled_scroll_counter+4);
+	}
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
 }
+/**
+  * @brief  Template to show other variables curently not available
+  * @param  x: var 1
+  * @param  y: var 2
+  * @param  z: var 3
+  * @retval None.
+  */
+void set_temp(float c, float t)
+{
+	uint32_t i;
+	uint8_t string_data[10];
 
+	// Strings for labels
+	uint8_t str_light[] = "Room: ";
+	uint8_t str_tbd1[] = "Set: ";
+
+	auto lines[] = { OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
+	// Clear OLED buffer
+	clear_oled_buffer();
+
+	// Draw the title
+	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "Edit Temp", FONT_SIZE_TITLE, white_pixel);
+
+	// Convert x value to string
+	ftoa(c, string_data, 1);
+
+	// Draw a label at line 1
+	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_light, FONT_SIZE_TITLE, white_pixel);
+	// Draw the value of x
+	sd1306_draw_string(sizeof(str_light) * 8, OLED_LINE_1_Y, string_data, FONT_SIZE_TITLE, white_pixel);
+	// Draw the units of x
+	sd1306_draw_string(sizeof(str_light) * 8 + (get_str_size(string_data) + 1) * 8, OLED_LINE_1_Y, " C°", FONT_SIZE_TITLE, white_pixel);
+
+	// Convert y value to string
+	ftoa(t, string_data, 1);
+
+	// Draw a label at line 2
+	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_3_Y, str_tbd1, FONT_SIZE_TITLE, white_pixel);
+	// Draw the value of y
+	sd1306_draw_string(sizeof(str_tbd1) * 8, OLED_LINE_3_Y, string_data, FONT_SIZE_TITLE, white_pixel);
+	// Draw the units of y
+	sd1306_draw_string(sizeof(str_tbd1) * 8 + (get_str_size(string_data) + 1) * 8, OLED_LINE_3_Y, " C°", FONT_SIZE_TITLE, white_pixel);
+
+	if (!edit && oled_scroll_counter >= 0 && oled_scroll_counter <= 6)
+		sd1306_invert_line(0, OLED_WIDTH, lines[oled_scroll_counter] - 1, lines[oled_scroll_counter] + 15);
+	else {
+		temporary++;
+	}
+	// Send the buffer to OLED RAM
+	sd1306_refresh();
+}
 /**
   * @brief  Template to show a logo
   * @param  None.

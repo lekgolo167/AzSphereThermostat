@@ -47,8 +47,8 @@ bool CheckTransferSize(const char *desc, size_t expectedBytes, ssize_t actualByt
 void HDC1080Begin(struct HDC1080* hdc1080_ptr)
 {
 	HDC1080_sensor = hdc1080_ptr;
-	HDC1080_sensor->humidity = 0.0;
-	HDC1080_sensor->temp_C = 0.0;
+	//HDC1080_sensor->humidity = 0.0;
+	//HDC1080_sensor->temp_C = 0.0;
 
 	// Send config register address then
 	// Send setup bytes, software reset bit ON, all others are default
@@ -86,7 +86,7 @@ bool HDC1080GetTemperature()
 	HDC1080_sensor->temp_C = (float)raw_t / 0x10000;
 	HDC1080_sensor->temp_C *= 165.0;
 	HDC1080_sensor->temp_C -= 40.0; // conversion provided in reference manual
-
+	HDC1080_sensor->temp_F = HDC1080_sensor->temp_C * 1.8 + 32;
 	return true;
 }
 

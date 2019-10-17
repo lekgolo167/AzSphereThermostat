@@ -197,6 +197,21 @@ void sd1306_draw_pixel(int32_t x, int32_t y, uint8_t color)
 }
 
 /**
+  * @brief  Invert line at specified coordinates
+  * @param  x: x coordinate
+  * @param  y: y coordinate
+  * @retval None.
+  */
+void sd1306_invert_line(int32_t x_start, int32_t x_end, int32_t y_start, int32_t height)
+{
+	for (int i = y_start; i < height; ++i) {
+		for (int j = x_start; j < x_end; ++j) {
+			sd1306_draw_pixel(j, i, inverse_pixel);
+		}
+	}
+}
+
+/**
   * @brief  Draw a line
   * @param  x1: x coordinate of start point
   * @param  y1: y coordinate of start point
@@ -713,7 +728,6 @@ void sd1306_draw_fillcircle_helper(uint8_t x0, uint8_t y0, uint8_t radius, uint8
 	}
 }
 
-
 /**
   * @brief  Check if the n bit of a byte is set.
   * @param  data: byte to test
@@ -868,7 +882,6 @@ void clear_oled_buffer()
   * @brief  Set all buffer's bytes to 0xff
   * @retval None.
   */
-
 void fill_oled_buffer()
 {
 	uint16_t i;
