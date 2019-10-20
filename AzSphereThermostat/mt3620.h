@@ -31,7 +31,9 @@ extern GPIO_Value_Type buttonBState;
 
 extern int8_t oled_scroll_counter;
 extern int8_t oled_menu_state;
-extern bool edit;
+extern int8_t oled_menu_item;
+extern int8_t temporary_setting;
+extern bool edit_oled_menu;
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

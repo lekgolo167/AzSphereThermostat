@@ -8,6 +8,8 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 	userSettings_ptr->samplePeriod.tv_nsec = 0;
 	userSettings_ptr->samplePeriod.tv_sec = 5;
 	userSettings_ptr->baselineTemp_C = 10.0;
+	userSettings_ptr->motionDetectorSec = 44000;
+	userSettings_ptr->screenTimeoutSec = 30;
 }
 
 bool cycleExpired(struct thermostatSettings *userSettings_ptr) {

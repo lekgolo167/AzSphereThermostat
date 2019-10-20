@@ -25,6 +25,8 @@ struct thermostatSettings
 	float baselineTemp_C;
 	struct timespec samplePeriod;
 	unsigned int totalSamples;
+	unsigned int screenTimeoutSec;
+	unsigned int motionDetectorSec;
 };
 
 /// <summary>

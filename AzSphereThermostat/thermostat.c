@@ -138,7 +138,7 @@ void furnaceRelay(bool powerON)
 	//	GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
 	//}
 	if (powerON)
-	GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
-	else
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
+	else
+		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
 };

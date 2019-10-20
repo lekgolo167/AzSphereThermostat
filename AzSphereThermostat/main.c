@@ -52,40 +52,66 @@ static int initI2C(void) {
 /// </summary>
 static void ButtonTimerEventHandler(EventData *eventData)
 {
-	//Log_Debug("IN THE TIMER\n");
 	if (ConsumeTimerFdEvent(buttonPollTimerFd) != 0) {
 		return;
 	}
 
-	//Rotary Encoder
-	///////////////////////////////////////
+	//
+	///////////////		Rotary Encoder		/////////////////////
 	int result = GPIO_GetValue(rotary_A_Fd, &rotary_A_State);
-
-	if (rotary_A_State != rotary_A_LastState) {
+	static bool docount = true;
+	if (rotary_A_State != rotary_A_LastState) { // This if statment checks which way the knob is turning
 		result = GPIO_GetValue(rotary_B_Fd, &rotary_B_State);
-		if (rotary_B_State != rotary_A_State) {
-			oled_scroll_counter++;
+		if (docount) { // Each time the knob is turned it counts 2 movments so we need to only check every other time
+			if (rotary_B_State != rotary_A_State) {
+				if (edit_oled_menu) {
+					temporary_setting++;
+					Log_Debug("Temp: %d\n", temporary_setting);
+				}
+				else {
+					oled_scroll_counter++;
+					Log_Debug("Counter: %d\n", oled_scroll_counter);
+				}
+			}
+			else {
+				if (edit_oled_menu) {
+					temporary_setting--;
+					Log_Debug("Temp: %d\n", temporary_setting);
+				}	
+				else {
+					oled_scroll_counter--;
+					Log_Debug("Counter: %d\n", oled_scroll_counter);
+				}
+			}
+			update_oled();	
 		}
-		else {
-			oled_scroll_counter--;
-		}
-		if (oled_scroll_counter % 2 == 0) {
-			update_oled(HDC1080_sensor_ptr->temp_C, HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity, userSettings_ptr->targetTemp_C);
-		}
-		Log_Debug("Counter: %d\n", oled_scroll_counter);
+		docount = !docount; // toggle so we count every other one
 	}
 	rotary_A_LastState = rotary_A_State;
 
+	// Check the state of the rotary button/switch; it's active LOW
 	result = GPIO_GetValue(rotary_SW_Fd, &rotary_SW_State);
 	if (rotary_SW_LastState != rotary_SW_State) {
 		rotary_SW_LastState = rotary_SW_State;
 		Log_Debug("SW: %d\n", rotary_SW_State);
-		if (!rotary_SW_State) {
-			edit = true;
+
+		if (rotary_SW_State == GPIO_Value_Low) { // if button pressed, edit is true, if pressed again edit is false
+			edit_oled_menu = !edit_oled_menu;
+			Log_Debug("Edit mode: %d\n", edit_oled_menu);
+			// if not editing set the temporary to the corrisponding var
+			if (edit_oled_menu == false)
+			{
+				updateUserSettings();
+			}
+			else {
+				Log_Debug("temp before: %d\n", temporary_setting);
+				updateTemporarySettingValue();
+				Log_Debug("temp after: %d\n", temporary_setting);
+			}
 		}
-		else edit = false;
+
 	}
-	//////////////////////////////////////
+	//////////////////	END ROTARY ENCODER	////////////////////
 
 	// Check for button A press
 	GPIO_Value_Type newButtonAState;
@@ -101,8 +127,9 @@ static void ButtonTimerEventHandler(EventData *eventData)
 		if (newButtonAState == GPIO_Value_Low) {
 			Log_Debug("Button A pressed!\n");
 			oled_menu_state++;
+			oled_scroll_counter = 0;
 			Log_Debug("OLDED state: %d\n", oled_menu_state);
-			update_oled(HDC1080_sensor_ptr->temp_C, HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity, userSettings_ptr->targetTemp_C);
+			update_oled();
 		}
 		else {
 			Log_Debug("Button A released!\n");
@@ -127,9 +154,9 @@ static void ButtonTimerEventHandler(EventData *eventData)
 			// Send Telemetry here
 			Log_Debug("Button B pressed!\n");
 			oled_menu_state--;
+			oled_scroll_counter = 0;
 			Log_Debug("OLDED state: %d\n", oled_menu_state);
-			update_oled(HDC1080_sensor_ptr->temp_C, HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity, userSettings_ptr->targetTemp_C);
-			//// OLED
+			update_oled();			//// OLED
 			//oled_state++;
 
 			//if (oled_state > OLED_NUM_SCREEN)
@@ -157,8 +184,7 @@ static void SensorTimerEventHandler(EventData *eventData) {
 	HDC1080GetTemperature();
 	HDC1080GetHumidity();
 	Log_Debug("got temp\n");
-	update_oled(HDC1080_sensor_ptr->temp_C, HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity, userSettings_ptr->targetTemp_C);
-
+	update_oled();
 }
 
 // event handler data structures. Only the event handler field needs to be populated.
@@ -178,7 +204,7 @@ static int initGPIO()
 	action.sa_handler = TerminationHandler;
 	sigaction(SIGTERM, &action, NULL);
 
-	GPIO_relay_Fd = GPIO_OpenAsOutput(10, GPIO_OutputMode_PushPull, GPIO_Value_Low);
+	GPIO_relay_Fd = GPIO_OpenAsOutput(10, GPIO_OutputMode_PushPull, GPIO_Value_High);
 	if (GPIO_relay_Fd < 0) {
 		Log_Debug(
 			"Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
@@ -252,8 +278,9 @@ int main(void)
 	initGPIO();
 	HDC1080Begin(&HDC1080_sensor);
 	initThermostat(&userSettings, &HDC1080_sensor);
-	oled_init();
-	update_oled(HDC1080_sensor_ptr->temp_C, HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity, userSettings_ptr->targetTemp_C);
+	oled_init(&HDC1080_sensor, &userSettings);
+	update_oled();
+	initCycle(&userSettings);//remove later
 	Log_Debug("start\n");
 		
 		Log_Debug("end\n");

@@ -7,21 +7,127 @@ extern uint8_t RTCore_status;
 extern uint8_t lsm6dso_status;
 extern uint8_t lps22hh_status;
 
+int8_t line_selection[] = { -20, OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
+enum menu_items { TARGET, THRESHOLD, BASELINE, TOTALSAMPLES, SAMPLEPERIOD, SCREENTIMEOUT, MOTIONDETECTION};
 struct HDC1080* sensor;
-static float temporary = 20.0;
+struct thermostatSettings* settings;
 /**
   * @brief  OLED initialization.
   * @param  None.
   * @retval Positive if was unsuccefully, zero if was succefully.
   */
-uint8_t oled_init(struct HDC1080* ptr)
+uint8_t oled_init(struct HDC1080* s_ptr, struct thermostatSettings* t_ptr)
 {
-	sensor = ptr;
+	sensor = s_ptr;
+	settings = t_ptr;
 	return sd1306_init();
 }
 
+// Update settings
+void updateUserSettings()
+{
+	switch (oled_menu_item)
+	{
+	case TARGET:
+	{
+		settings->targetTemp_C = temporary_setting;
+	}
+	break;
+	case THRESHOLD:
+	{
+		settings->temp_C_Threshold = temporary_setting;
+	}
+	break;
+	case BASELINE:
+	{
+		settings->baselineTemp_C = temporary_setting;
+	}
+	break;
+	case TOTALSAMPLES:
+	{
+		settings->totalSamples = temporary_setting;
+	}
+	break;
+	case SAMPLEPERIOD:
+	{
+		struct timespec t = { temporary_setting, 0 };
+		settings->samplePeriod = t;
+	}
+	break;
+	case SCREENTIMEOUT:
+	{
+		settings->screenTimeoutSec = temporary_setting;
+	}
+	break;
+	case MOTIONDETECTION:
+	{
+		settings->motionDetectorSec = temporary_setting;
+	}
+	break;
+	case 7:
+	{
+
+	}
+	break;
+
+	default:
+		break;
+	}
+}
+
+// Update settings
+void updateTemporarySettingValue()
+{
+	switch (oled_menu_item)
+	{
+	case TARGET:
+	{
+		temporary_setting = settings->targetTemp_C;
+	}
+	break;
+	case THRESHOLD:
+	{
+		temporary_setting = settings->temp_C_Threshold;
+	}
+	break;
+	case BASELINE:
+	{
+		temporary_setting = settings->baselineTemp_C;
+	}
+	break;
+	case TOTALSAMPLES:
+	{
+		temporary_setting = settings->totalSamples;
+	}
+	break;
+	case SAMPLEPERIOD:
+	{
+		temporary_setting = settings->samplePeriod.tv_sec;
+	}
+	break;
+	case SCREENTIMEOUT:
+	{
+		temporary_setting = settings->screenTimeoutSec;
+	}
+	break;
+	case MOTIONDETECTION:
+	{
+		temporary_setting = settings->motionDetectorSec;
+	}
+	break;
+	case 7:
+	{
+
+	}
+	break;
+
+	default:
+		break;
+	}
+}
+
 // State machine to change the OLED status
-void update_oled(float c, float f, float h, float t)
+void update_oled()
 {
 	switch (oled_menu_state)
 	{
@@ -32,16 +138,17 @@ void update_oled(float c, float f, float h, float t)
 		break;
 		case 1:
 		{
-			set_temp(c, temporary);
+			set_temp();
 		}
 		break;
 		case 2:
 		{
-			update_other(c, f,h);
+			update_other();
 		}
 		break;
 		case 3:
 		{
+			set_thresh();
 		}
 		break;
 		case 4:
@@ -203,9 +310,8 @@ void oled_i2c_bus_status(uint8_t sensor_number)
   * @param  z: var 3
   * @retval None.
   */
-void update_other(float x, float y, float z)
+void update_other()
 {
-	uint32_t i;
 	uint8_t string_data[10];
 
 	// Strings for labels
@@ -213,7 +319,6 @@ void update_other(float x, float y, float z)
 	uint8_t str_tbd1[] = "HDC1080: ";
 	uint8_t str_tbd2[] = "Humidity:";
 
-	auto lines[] = { OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
 	// Clear OLED buffer
 	clear_oled_buffer();
 
@@ -221,7 +326,7 @@ void update_other(float x, float y, float z)
 	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "   TEMP", FONT_SIZE_TITLE, white_pixel);
 
 	// Convert x value to string
-	ftoa(x, string_data, 2);
+	ftoa(sensor->temp_C, string_data, 2);
 
 	// Draw a label at line 1
 	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_light, FONT_SIZE_LINE, white_pixel);
@@ -231,7 +336,7 @@ void update_other(float x, float y, float z)
 	sd1306_draw_string(sizeof(str_light) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_1_Y, " C°", FONT_SIZE_LINE, white_pixel);
 
 	// Convert y value to string
-	ftoa(y, string_data, 2);
+	ftoa(sensor->temp_F, string_data, 2);
 
 	// Draw a label at line 2
 	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, str_tbd1, FONT_SIZE_LINE, white_pixel);
@@ -241,18 +346,16 @@ void update_other(float x, float y, float z)
 	sd1306_draw_string(sizeof(str_tbd1) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, " F°", FONT_SIZE_LINE, white_pixel);
 
 	// Convert z value to string
-	ftoa(z, string_data, 2);
+	ftoa(sensor->humidity, string_data, 2);
 	// Draw a label at line 3
 	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, str_tbd2, FONT_SIZE_LINE, white_pixel);
 	// Draw the value of z
 	sd1306_draw_string(sizeof(str_tbd2) * 6, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
 	// Draw the units of z
 	sd1306_draw_string(sizeof(str_tbd2) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_3_Y, "%", FONT_SIZE_LINE, white_pixel);
-	if(oled_scroll_counter >=0 && oled_scroll_counter <=6)
-	sd1306_invert_line(0, OLED_WIDTH, lines[oled_scroll_counter/2]-1, lines[oled_scroll_counter / 2] +9);
-	else {
-		sd1306_invert_line(0, OLED_WIDTH, oled_scroll_counter - 6, oled_scroll_counter+4);
-	}
+
+	boundScrollCounter(1, 4, 9);
+
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
 }
@@ -263,16 +366,14 @@ void update_other(float x, float y, float z)
   * @param  z: var 3
   * @retval None.
   */
-void set_temp(float c, float t)
+void set_temp()
 {
-	uint32_t i;
 	uint8_t string_data[10];
-
+	int8_t items[] = { -1, TARGET };
 	// Strings for labels
-	uint8_t str_light[] = "Room: ";
+	uint8_t str_light[] = "Air: ";
 	uint8_t str_tbd1[] = "Set: ";
 
-	auto lines[] = { OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
 	// Clear OLED buffer
 	clear_oled_buffer();
 
@@ -280,7 +381,7 @@ void set_temp(float c, float t)
 	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "Edit Temp", FONT_SIZE_TITLE, white_pixel);
 
 	// Convert x value to string
-	ftoa(c, string_data, 1);
+	ftoa(sensor->temp_C, string_data, 1);
 
 	// Draw a label at line 1
 	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_light, FONT_SIZE_TITLE, white_pixel);
@@ -290,7 +391,13 @@ void set_temp(float c, float t)
 	sd1306_draw_string(sizeof(str_light) * 8 + (get_str_size(string_data) + 1) * 8, OLED_LINE_1_Y, " C°", FONT_SIZE_TITLE, white_pixel);
 
 	// Convert y value to string
-	ftoa(t, string_data, 1);
+	if (edit_oled_menu && oled_menu_item == TARGET) {
+		ftoa(temporary_setting, string_data, 1);
+	}
+	else {
+		
+		ftoa(settings->targetTemp_C, string_data, 1);
+	}
 
 	// Draw a label at line 2
 	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_3_Y, str_tbd1, FONT_SIZE_TITLE, white_pixel);
@@ -299,14 +406,64 @@ void set_temp(float c, float t)
 	// Draw the units of y
 	sd1306_draw_string(sizeof(str_tbd1) * 8 + (get_str_size(string_data) + 1) * 8, OLED_LINE_3_Y, " C°", FONT_SIZE_TITLE, white_pixel);
 
-	if (!edit && oled_scroll_counter >= 0 && oled_scroll_counter <= 6)
-		sd1306_invert_line(0, OLED_WIDTH, lines[oled_scroll_counter] - 1, lines[oled_scroll_counter] + 15);
-	else {
-		temporary++;
-	}
+	boundScrollCounter(3, 3, 15);
+	oled_menu_item = items[(oled_scroll_counter-2)];
+
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
 }
+
+void set_thresh()
+{
+	uint32_t i;
+	uint8_t string_data[10];
+	int8_t items[] = {-1, THRESHOLD,BASELINE};
+	// Strings for labels
+	uint8_t str_light[] = "Thresh: ";
+	uint8_t str_tbd1[] = "Base: ";
+
+	auto lines[] = { NULL, OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
+	// Clear OLED buffer
+	clear_oled_buffer();
+
+	// Draw the title
+	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "Settings", FONT_SIZE_TITLE, white_pixel);
+
+	// Convert x value to string
+	if (edit_oled_menu && oled_menu_item == THRESHOLD) {
+		ftoa(temporary_setting, string_data, 1);
+	}
+	else {
+		ftoa(settings->temp_C_Threshold, string_data, 1);
+	}
+	// Draw a label at line 1
+	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, str_light, FONT_SIZE_LINE, white_pixel);
+	// Draw the value of x
+	sd1306_draw_string(sizeof(str_light) * 8, OLED_LINE_1_Y, string_data, FONT_SIZE_LINE, white_pixel);
+	// Draw the units of x
+	sd1306_draw_string(sizeof(str_light) * 8 + (get_str_size(string_data) + 1) * 8, OLED_LINE_1_Y, " C°", FONT_SIZE_LINE, white_pixel);
+
+	// Convert y value to string
+	if (edit_oled_menu && oled_menu_item == BASELINE) {
+		ftoa(temporary_setting, string_data, 1);
+	}
+	else {
+		ftoa(settings->baselineTemp_C, string_data, 1);
+	}
+
+	// Draw a label at line 2
+	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, str_tbd1, FONT_SIZE_LINE, white_pixel);
+	// Draw the value of y
+	sd1306_draw_string(sizeof(str_tbd1) * 8, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
+	// Draw the units of y
+	sd1306_draw_string(sizeof(str_tbd1) * 8 + (get_str_size(string_data) + 1) * 8, OLED_LINE_2_Y, " C°", FONT_SIZE_LINE, white_pixel);
+
+	boundScrollCounter(1, 2, 9);
+	oled_menu_item = items[oled_scroll_counter];
+	// Send the buffer to OLED RAM
+	sd1306_refresh();
+}
+
 /**
   * @brief  Template to show a logo
   * @param  None.
@@ -319,6 +476,17 @@ void oled_draw_logo(void)
 
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
+}
+
+void boundScrollCounter(int8_t low, int8_t high, uint8_t height) {
+	if (oled_scroll_counter > high) {
+		oled_scroll_counter = high;
+	}
+	else if (oled_scroll_counter < low -1) {
+		oled_scroll_counter = low -1;
+	}
+	if (oled_scroll_counter >= low)
+		sd1306_invert_line(0, OLED_WIDTH, line_selection[oled_scroll_counter] - 1, line_selection[oled_scroll_counter] + height);
 }
 
 // reverses a string 'str' of length 'len' 
@@ -430,8 +598,18 @@ void ftoa(float n, uint8_t *res, int32_t afterpoint)
 	}
 }
 
-// AVNET logo
+uint8_t get_str_size(uint8_t * str)
+{
+	uint8_t legth = 0;
+	while (*(str) != NULL)
+	{
+		str++;
+		legth++;
+	}
+	return legth;
+}
 
+// AVNET logo
 const unsigned char Image_avnet_bmp[BUFFER_SIZE] =
 {
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -499,15 +677,3 @@ const unsigned char Image_avnet_bmp[BUFFER_SIZE] =
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 };
-
-
-uint8_t get_str_size(uint8_t * str)
-{
-	uint8_t legth = 0;
-	while (*(str) != NULL)
-	{
-		str++;
-		legth++;
-	}
-	return legth;
-}

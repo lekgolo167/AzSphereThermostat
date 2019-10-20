@@ -8,6 +8,7 @@
 #include "sd1306.h"
 #include "mt3620.h"
 #include "HDC1080.h"
+#include "thermostat.h"
 
 
 #define OLED_NUM_MENUS 7
@@ -36,23 +37,26 @@
 
 #define SSID_MAX_LEGTH    15
 
-
 const unsigned char Image_avnet_bmp[1024];
 
 extern uint8_t oled_state;
 
-extern uint8_t oled_init();
+extern uint8_t oled_init(struct HDC1080* s_ptr, struct thermostatSettings* t_ptr);
+extern void updateUserSettings();
+void updateTemporarySettingValue();
 
 extern void oled_i2c_bus_status(uint8_t lsmod_status);
 
-extern void update_oled(float c, float f, float h, float t);
+extern void update_oled();
 
 extern void oled_draw_logo(void);
 
-void update_other(float x, float y, float z);
+void update_other();
 
-void set_temp(float c, float t);
+void set_temp();
+void set_thresh();
 
+void boundScrollCounter(int8_t low, int8_t high, uint8_t height);
 /**
   * @brief  Converts a given integer x to string uint8_t[]
   * @param  n: float number to convert

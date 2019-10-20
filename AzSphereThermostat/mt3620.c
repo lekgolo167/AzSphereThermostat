@@ -21,4 +21,6 @@ GPIO_Value_Type buttonBState = GPIO_Value_High;
 
 int8_t oled_scroll_counter = 0;
 int8_t oled_menu_state = 0;
-bool edit = false;
+int8_t oled_menu_item = -1;
+int8_t temporary_setting = 0;
+bool edit_oled_menu = false;
