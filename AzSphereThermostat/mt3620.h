@@ -11,7 +11,7 @@
 
 extern int ISU_2_Fd;
 extern int GPIO_relay_Fd;
-
+extern int motionDetectorGpioFd;
 extern int rotary_A_Fd;
 extern int rotary_B_Fd;
 extern int rotary_SW_Fd;
@@ -34,6 +34,11 @@ extern int8_t oled_menu_state;
 extern int8_t oled_menu_item;
 extern int8_t temporary_setting;
 extern bool edit_oled_menu;
+extern bool oledScreenON;
+
+extern bool reconfigureTimer;
+
+extern long lastMotionDetectedTimeStamp;
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

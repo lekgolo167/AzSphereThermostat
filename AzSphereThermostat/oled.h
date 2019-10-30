@@ -9,6 +9,7 @@
 #include "mt3620.h"
 #include "HDC1080.h"
 #include "thermostat.h"
+#include <applibs/rtc.h>
 
 
 #define OLED_NUM_MENUS 7
@@ -52,9 +53,10 @@ extern void update_oled();
 extern void oled_draw_logo(void);
 
 void update_other();
-
+void sampleSettings();
 void set_temp();
 void set_thresh();
+void displayDateAndTime();
 
 void boundScrollCounter(int8_t low, int8_t high, uint8_t height);
 /**

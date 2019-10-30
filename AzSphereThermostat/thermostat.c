@@ -1,123 +1,85 @@
 #include "thermostat.h"
 #include "oled.h"
+
 struct thermostatSettings *userSettings;
 struct HDC1080 *HDC1080_sensor;
 
+float temperatureSamples[20] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+int sampleAverageIndex = 0;
 
 void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr)
 {
-	relayON = false;
-
 	userSettings = userSettings_ptr;
 
 	HDC1080_sensor = HDC1080_sensor_ptr;
-};
+	const struct timespec sleeptime = { 0, 50000000 };
+	while (!HDC1080GetTemperature()) {
+		Log_Debug("failed to get temperature\n");
+		nanosleep(&sleeptime, NULL);
+	};
 
-void runCycle()
-{
-	Log_Debug("[INFO:] In runCycle\n");
-	// Load new cycle and populate settings struct
-	initCycle(userSettings);
-
-	do {
-		// Stay in standby until room drops below threshold temperature
-		float roomTemp_C = standBy();
-
-		// Once room is below threshold, check if the furnace should be on
-		if (preRunChecklist(roomTemp_C))
-		{
-			// Run furnace until room reaches threshold
-			runFurnace(userSettings->targetTemp_C);
-		}
-
-		// check if schedule expired
-	} while(!cycleExpired(userSettings));
-
-
-};
-
-float standBy()
-{
-	Log_Debug("[INFO:] In standBy\n");
-	float roomTemp_C = 0.0;
-
-	while (1) 
-	{
-		//oled_draw_logo();
-		roomTemp_C = sampleTemperature();
-		update_other(roomTemp_C, tempC2F(), 0.0);
-		// Check if room is below threshold temperature
-		if (roomTemp_C <= (userSettings->targetTemp_C - userSettings->temp_C_Threshold))
-		{
-			break;
-		}
+	Log_Debug("initializing sample arrary with: %f\n", HDC1080_sensor_ptr->temp_C);
+	for (int i = 0; i < 20; i++) {
+		temperatureSamples[i] = HDC1080_sensor_ptr->temp_C;
 	}
-	return roomTemp_C;
 };
 
-void runFurnace(float targetTemp_C)
+void runCycle(float roomTemp_C)
 {
-	Log_Debug("[INFO:]  runFurnace\n");
-	// Turn furnace ON
-	furnaceRelay(true);
-
-	while (1)
+	int8_t state = -1;
+	// Check if room is below target temperature
+	if (preRunChecklist() && roomTemp_C <= (userSettings->targetTemp_C - userSettings->lower_threshold))
 	{
-		float roomTemp_C = sampleTemperature();
-		update_other(roomTemp_C, tempC2F(), 0.0);
-		// Check if room is above threshold temperature
-		if (roomTemp_C >= (targetTemp_C + userSettings->temp_C_Threshold))
-		{
-			break;
-		}
+		Log_Debug("[INFO:] Below target\n");
+		// Run furnace until room reaches target
+		state = true;
+	}
+	// Check if room is above target temperature
+	else if (preRunChecklist() && roomTemp_C >= (userSettings->targetTemp_C + userSettings->upper_threshold))
+	{
+		Log_Debug("[INFO:] Above target\n");
+		state = false;
+	}
+	// Check if room is below baseline temperature
+	else if (roomTemp_C <= (userSettings->baselineTemp_C - userSettings->lower_threshold)) {
+		// Run furnace until room reaches baseline
+		Log_Debug("[INFO:] Below baseline\n");
+		state = true;
+	}
+	// check if room is above baseline temperature
+	else if (!preRunChecklist() && roomTemp_C >= (userSettings->baselineTemp_C + userSettings->upper_threshold))
+	{
+		Log_Debug("[INFO:] Above baseline\n");
+		state = false;
 	}
 
-	// Turn furnace OFF
-	furnaceRelay(false);
+	if (state >= 0) {
+		Log_Debug("relay %d\n", state);
+		furnaceRelay(state);
+	}
+
 };
 
 float sampleTemperature()
 {
-	Log_Debug("[INFO:] In sampleTemperature\n");
-	float averageTemp_C = 0.0;
+	HDC1080GetTemperature();
+	HDC1080GetHumidity();
 
-	for (unsigned int sample = 0; sample < userSettings->totalSamples; ++sample)
-	{
-		// wait inbetween samples
-		nanosleep(&userSettings->samplePeriod, NULL);
-		
-		// get the temperature
-		if (HDC1080GetTemperature()) {
-			averageTemp_C += HDC1080_sensor->temp_C;
-			// temporary debug statement
-			char c[20];
-			sprintf(c, "TEMP -> %f \n", HDC1080_sensor->temp_C);
-			Log_Debug(c);
-		}
-		else // failed to read temp_C try again
-		{
-			--sample;
-		}
-		// TODO make this fail if it tries X amount of times
+	temperatureSamples[sampleAverageIndex++] = HDC1080_sensor->temp_C;
+	if (sampleAverageIndex > userSettings->totalSamples) {
+		sampleAverageIndex = 0;
 	}
+	float averageTemp_C = 0.0;
+	for (int i = 0; i < userSettings->totalSamples; i++) {
+		averageTemp_C += temperatureSamples[i];
+	}
+	averageTemp_C /= userSettings->totalSamples;
 
-	// temporary debug statement
-	char c[20];
-	sprintf(c, "AVG -> %f \n", (averageTemp_C / userSettings->totalSamples));
-	Log_Debug(c);
-	return (averageTemp_C / userSettings->totalSamples);
+	runCycle(averageTemp_C);
 };
 
-bool preRunChecklist(float roomTemp_C)
+bool preRunChecklist()
 {
-	Log_Debug("[INFO:] In preRunChecklist\n");
-	// If the room temp is below the baseline then turn on the furnace regardless of schedule and motion detection
-	if (roomTemp_C <= (userSettings->baselineTemp_C - userSettings->temp_C_Threshold)) {
-
-		runFurnace(userSettings->baselineTemp_C);
-		return false;
-	}
-
 	// Check if motion has been detected, if not then don't run the furnace
 	if (!motion())
 		return false;
@@ -128,14 +90,15 @@ bool preRunChecklist(float roomTemp_C)
 
 void furnaceRelay(bool powerON)
 {
-	Log_Debug("[INFO:] In furnaceRelay\n");
-	//const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-
+	//bool relayON;
+	//int result = GIPO_Get_value(furnaceRelayStateFd, &relayON);
 	//if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
 	//{
-	//	GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low); // connect opendrain
-	//	nanosleep(&sleepTime, NULL);
-	//	GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
+	//  Log_Debug("[INFO:] In furnaceRelay\n");
+	//  //const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
+	//  GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low); // connect opendrain
+	//  nanosleep(&sleepTime, NULL);
+	//  GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
 	//}
 	if (powerON)
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);

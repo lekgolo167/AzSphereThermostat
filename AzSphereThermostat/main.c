@@ -10,6 +10,7 @@
 #include <applibs/log.h>
 #include <applibs/i2c.h>
 #include <applibs/gpio.h>
+#include <applibs/rtc.h>
 
 #include "mt3620.h"
 #include "thermostat.h"
@@ -21,6 +22,8 @@ static int epollFd = -1;
 
 static int buttonPollTimerFd = -1;
 static int sensorPollTimerFd = -1;
+static int motionPollTimerFd = -1;
+
 struct HDC1080 *HDC1080_sensor_ptr;
 struct thermostatSettings *userSettings_ptr;
 
@@ -157,12 +160,6 @@ static void ButtonTimerEventHandler(EventData *eventData)
 			oled_scroll_counter = 0;
 			Log_Debug("OLDED state: %d\n", oled_menu_state);
 			update_oled();			//// OLED
-			//oled_state++;
-
-			//if (oled_state > OLED_NUM_SCREEN)
-			//{
-			//	oled_state = 0;
-			//}
 		}
 		else {
 			Log_Debug("Button B released!\n");
@@ -181,29 +178,46 @@ static void SensorTimerEventHandler(EventData *eventData) {
 	if (ConsumeTimerFdEvent(sensorPollTimerFd) != 0) {
 		return;
 	}
-	HDC1080GetTemperature();
-	HDC1080GetHumidity();
-	Log_Debug("got temp\n");
+	sampleTemperature();
 	update_oled();
+}
+
+static void MotionTimerEventHandler(EventData *eventData) {
+	if (ConsumeTimerFdEvent(motionPollTimerFd) != 0) {
+		return;
+	}
+
+	struct timespec currentTime;
+	clock_gettime(CLOCK_REALTIME, &currentTime);
+
+	GPIO_Value_Type motionSensorPin;
+	int result = GPIO_GetValue(motionDetectorGpioFd, &motionSensorPin);
+
+	if (motionSensorPin > 0) {
+		lastMotionDetectedTimeStamp = currentTime.tv_sec;
+	}
+	long interval = currentTime.tv_sec - lastMotionDetectedTimeStamp;
+	Log_Debug("Interval: %d\n", interval);
+	if (interval > userSettings_ptr->screenTimeoutSec && oledScreenON) {
+		oledScreenON = false;
+		clear_oled_buffer();
+		sd1306_refresh();
+		Log_Debug("OLED OFF\n");
+	}
+	else if (interval < userSettings_ptr->screenTimeoutSec && !oledScreenON) {
+		oledScreenON = true;
+		update_oled();
+		Log_Debug("OLED ON\n");
+	}
 }
 
 // event handler data structures. Only the event handler field needs to be populated.
 static EventData buttonEventData = { .eventHandler = &ButtonTimerEventHandler };
 static EventData sensorEventData = { .eventHandler = &SensorTimerEventHandler };
-
-static void TerminationHandler(int signalNumber)
-{
-	// Don't use Log_Debug here, as it is not guaranteed to be async-signal-safe.
-
-}
+static EventData motionEventData = { .eventHandler = &MotionTimerEventHandler };
 
 static int initGPIO()
 {
-	struct sigaction action;
-	memset(&action, 0, sizeof(struct sigaction));
-	action.sa_handler = TerminationHandler;
-	sigaction(SIGTERM, &action, NULL);
-
 	GPIO_relay_Fd = GPIO_OpenAsOutput(10, GPIO_OutputMode_PushPull, GPIO_Value_High);
 	if (GPIO_relay_Fd < 0) {
 		Log_Debug(
@@ -246,6 +260,27 @@ static int initGPIO()
 			strerror(errno), errno);
 		return -1;
 	}
+	motionDetectorGpioFd = GPIO_OpenAsInput(1);
+	if (motionDetectorGpioFd < 0) {
+		Log_Debug(
+			"Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
+			strerror(errno), errno);
+		return -1;
+	}
+	return 0;
+};
+
+static int reconfigureSensorEpollTimer() {
+	UnregisterEventHandlerFromEpoll(epollFd, sensorPollTimerFd);
+	sensorPollTimerFd =
+		CreateTimerFdAndAddToEpoll(epollFd, &userSettings_ptr->samplePeriod, &sensorEventData, EPOLLIN);
+	if (sensorPollTimerFd < 0) {
+		Log_Debug("Failed to create timer\n");
+		return -1;
+	}
+};
+
+static int initTimerEventHandlers() {
 	epollFd = CreateEpollFd();
 	if (epollFd < 0) {
 		return -1;
@@ -257,15 +292,54 @@ static int initGPIO()
 		Log_Debug("Failed to create timer\n");
 		return -1;
 	}
-	struct timespec sensorCheckPeriod = { 10, 0 };
 	sensorPollTimerFd =
-		CreateTimerFdAndAddToEpoll(epollFd, &sensorCheckPeriod, &sensorEventData, EPOLLIN);
+		CreateTimerFdAndAddToEpoll(epollFd, &userSettings_ptr->samplePeriod, &sensorEventData, EPOLLIN);
 	if (sensorPollTimerFd < 0) {
 		Log_Debug("Failed to create timer\n");
 		return -1;
 	}
-	return 0;
-};
+	struct timespec motionDetectionPeriod = { 3,0 };
+	motionPollTimerFd =
+		CreateTimerFdAndAddToEpoll(epollFd, &motionDetectionPeriod, &motionEventData, EPOLLIN);
+	if (sensorPollTimerFd < 0) {
+		Log_Debug("Failed to create timer\n");
+		return -1;
+	}
+}
+
+/// <summary>
+///     Print the time in both UTC time zone and local time zone.
+/// </summary>
+static void PrintTime(void)
+{
+	// Ask for CLOCK_REALTIME to obtain the current system time. This is not to be confused with the
+	// hardware RTC used below to persist the time.
+	struct timespec currentTime;
+	if (clock_gettime(CLOCK_REALTIME, &currentTime) == -1) {
+		Log_Debug("ERROR: clock_gettime failed with error code: %s (%d).\n", strerror(errno),
+			errno);
+		return;
+	}
+	else {
+		char displayTimeBuffer[26];
+		if (!asctime_r((gmtime(&currentTime.tv_sec)), (char *restrict) & displayTimeBuffer)) {
+			Log_Debug("ERROR: asctime_r failed with error code: %s (%d).\n", strerror(errno),
+				errno);
+			return;
+		}
+		Log_Debug("UTC:            %s", displayTimeBuffer);
+		if (!asctime_r((localtime(&currentTime.tv_sec)), (char *restrict) & displayTimeBuffer)) {
+			Log_Debug("ERROR: asctime_r failed with error code: %s (%d).\n", strerror(errno),
+				errno);
+			return;
+		}
+
+		// Remove the new line at the end of 'displayTimeBuffer'
+		displayTimeBuffer[strlen(displayTimeBuffer) - 1] = '\0';
+		size_t tznameIndex = ((localtime(&currentTime.tv_sec))->tm_isdst) ? 1 : 0;
+		Log_Debug("Local time:     %s %s\n", displayTimeBuffer, tzname[tznameIndex]);
+	}
+}
 
 int main(void)
 {
@@ -278,15 +352,21 @@ int main(void)
 	initGPIO();
 	HDC1080Begin(&HDC1080_sensor);
 	initThermostat(&userSettings, &HDC1080_sensor);
+
 	oled_init(&HDC1080_sensor, &userSettings);
 	update_oled();
 	initCycle(&userSettings);//remove later
-	Log_Debug("start\n");
-		
-		Log_Debug("end\n");
+	initTimerEventHandlers();
+	setenv("TZ", "GMT+6", 1);
+	tzset();
+	PrintTime();
     while (true) {
 		//if not away else maintain baseline
 		//runCycle();
 		WaitForEventAndCallHandler(epollFd);
+		if (reconfigureTimer) {
+			reconfigureSensorEpollTimer();
+			reconfigureTimer = false;
+		}
     }
 }

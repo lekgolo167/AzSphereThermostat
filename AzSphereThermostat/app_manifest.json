@@ -7,8 +7,9 @@
   "Capabilities": {
     "AllowedConnections": [],
     "I2cMaster": ["ISU2"],
-    "Gpio": [ 0, 2, 10, 12, 13, 16 ],
+    "Gpio": [ 0, 1, 2, 10, 12, 13, 16 ],
     "Uart": [],
+    "SystemTime": true,
     "WifiConfig": false
   },
   "ApplicationType":"Default"

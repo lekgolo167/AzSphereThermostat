@@ -13,7 +13,6 @@
 #include "HC-SR04.h"
 #include "schedule.h"
 
-volatile int relayON;
 
 /// <summary>
 ///     This struct saves the current user settings
@@ -21,7 +20,8 @@ volatile int relayON;
 struct thermostatSettings
 {
 	float targetTemp_C;
-	float temp_C_Threshold;
+	float lower_threshold;
+	float upper_threshold;
 	float baselineTemp_C;
 	struct timespec samplePeriod;
 	unsigned int totalSamples;
@@ -37,7 +37,7 @@ void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 
 /// <summary>
 ///     Logic to maintain temperature
 /// </summary>
-void runCycle();
+void runCycle(float roomTemp_C);
 
 /// <summary>
 ///     This function waits for the conditions to be right to run the furnace
@@ -57,7 +57,7 @@ void runFurnace(float targetTemp_C);
 /// <summary>
 ///     This function checks the pre-requirements to run the furnace
 /// </summary>
-bool preRunChecklist(float roomTemp_C);
+bool preRunChecklist();
 
 /// <summary>
 ///     This function toogles the furnace relay
