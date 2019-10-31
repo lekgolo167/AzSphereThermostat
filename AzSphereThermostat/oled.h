@@ -56,6 +56,7 @@ void update_other();
 void sampleSettings();
 void set_temp();
 void set_thresh();
+void motionSettings();
 void displayDateAndTime();
 
 void boundScrollCounter(int8_t low, int8_t high, uint8_t height);

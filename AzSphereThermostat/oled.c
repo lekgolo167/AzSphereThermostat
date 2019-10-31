@@ -169,11 +169,12 @@ void update_oled()
 		break;
 		case 5:
 		{
-			displayDateAndTime();
+			motionSettings();
 		}
 		break;
 		case 6:
 		{
+			displayDateAndTime();
 		}
 		break;
 		case 7:
@@ -520,10 +521,10 @@ void sampleSettings()
 
 	// Convert upper value to string
 	if (edit_oled_menu && oled_menu_item == SAMPLEPERIOD) {
-		ftoa(temporary_setting, string_data, 0);
+		intToStr(temporary_setting, string_data, 0);
 	}
 	else {
-		ftoa(settings->samplePeriod.tv_sec, string_data, 0);
+		intToStr(settings->samplePeriod.tv_sec, string_data, 0);
 	}
 	// Draw a label at line 1
 	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, samplePeriod, FONT_SIZE_LINE, white_pixel);
@@ -538,6 +539,55 @@ void sampleSettings()
 	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, string_data, FONT_SIZE_LINE, white_pixel);
 
 	boundScrollCounter(1, 3, 9);
+	oled_menu_item = items[oled_scroll_counter];
+	// Send the buffer to OLED RAM
+	sd1306_refresh();
+}
+
+void motionSettings()
+{
+	uint32_t i;
+	uint8_t string_data[10];
+	int8_t items[] = { -1, SCREENTIMEOUT, MOTIONDETECTION };
+	// Strings for labels
+	uint8_t screenTimeout_str[] = "Screen Timeout:";
+	uint8_t motionDetectionTime_str[] = "Motion Time:";
+
+	// Clear OLED buffer
+	clear_oled_buffer();
+
+	// Draw the title
+	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "Settings", FONT_SIZE_TITLE, white_pixel);
+
+	// Convert lower value to string
+	if (edit_oled_menu && oled_menu_item == SCREENTIMEOUT) {
+		ftoa(temporary_setting, string_data, 0);
+	}
+	else {
+		ftoa(settings->screenTimeoutSec, string_data, 0);
+	}
+	// Draw a label at line 1
+	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, screenTimeout_str, FONT_SIZE_LINE, white_pixel);
+	// Draw the value of x
+	sd1306_draw_string(sizeof(screenTimeout_str) * 6, OLED_LINE_1_Y, string_data, FONT_SIZE_LINE, white_pixel);
+	// Draw the units of x
+	sd1306_draw_string(sizeof(screenTimeout_str) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_1_Y, "S", FONT_SIZE_LINE, white_pixel);
+
+	// Convert upper value to string
+	if (edit_oled_menu && oled_menu_item == MOTIONDETECTION) {
+		intToStr(temporary_setting, string_data, 0);
+	}
+	else {
+		intToStr(settings->motionDetectorSec/3600, string_data, 0);
+	}
+	// Draw a label at line 1
+	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, motionDetectionTime_str, FONT_SIZE_LINE, white_pixel);
+	// Draw the value of x
+	sd1306_draw_string(sizeof(motionDetectionTime_str) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
+	// Draw the units of x
+	sd1306_draw_string(sizeof(motionDetectionTime_str) * 6 + (get_str_size(string_data) + 1) * 6, OLED_LINE_2_Y, "Hr", FONT_SIZE_LINE, white_pixel);
+
+	boundScrollCounter(1, 2, 9);
 	oled_menu_item = items[oled_scroll_counter];
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
