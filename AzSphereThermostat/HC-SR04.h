@@ -1,5 +1,10 @@
 #pragma once
 
 #include <stdbool.h>
+#include <time.h>
+#include "mt3620.h"
+#include "oled.h"
 
-bool motion();
+bool motionTimeoutCheck(unsigned int timeout);
+
+void motionTimer(unsigned int screenTimeout);

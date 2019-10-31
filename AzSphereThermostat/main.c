@@ -15,6 +15,7 @@
 #include "mt3620.h"
 #include "thermostat.h"
 #include "HDC1080.h"
+#include "HC-SR04.h"
 #include "oled.h"
 #include "epoll_timerfd_utilities.h"
 
@@ -131,7 +132,7 @@ static void ButtonTimerEventHandler(EventData *eventData)
 			Log_Debug("Button A pressed!\n");
 			oled_menu_state++;
 			oled_scroll_counter = 0;
-			Log_Debug("OLDED state: %d\n", oled_menu_state);
+			Log_Debug("OLED state: %d\n", oled_menu_state);
 			update_oled();
 		}
 		else {
@@ -186,29 +187,7 @@ static void MotionTimerEventHandler(EventData *eventData) {
 	if (ConsumeTimerFdEvent(motionPollTimerFd) != 0) {
 		return;
 	}
-
-	struct timespec currentTime;
-	clock_gettime(CLOCK_REALTIME, &currentTime);
-
-	GPIO_Value_Type motionSensorPin;
-	int result = GPIO_GetValue(motionDetectorGpioFd, &motionSensorPin);
-
-	if (motionSensorPin > 0) {
-		lastMotionDetectedTimeStamp = currentTime.tv_sec;
-	}
-	long interval = currentTime.tv_sec - lastMotionDetectedTimeStamp;
-	Log_Debug("Interval: %d\n", interval);
-	if (interval > userSettings_ptr->screenTimeoutSec && oledScreenON) {
-		oledScreenON = false;
-		clear_oled_buffer();
-		sd1306_refresh();
-		Log_Debug("OLED OFF\n");
-	}
-	else if (interval < userSettings_ptr->screenTimeoutSec && !oledScreenON) {
-		oledScreenON = true;
-		update_oled();
-		Log_Debug("OLED ON\n");
-	}
+	motionTimer(userSettings_ptr->screenTimeoutSec);
 }
 
 // event handler data structures. Only the event handler field needs to be populated.
@@ -321,6 +300,7 @@ static void PrintTime(void)
 		return;
 	}
 	else {
+		lastMotionDetectedTimeStamp = currentTime.tv_sec;
 		char displayTimeBuffer[26];
 		if (!asctime_r((gmtime(&currentTime.tv_sec)), (char *restrict) & displayTimeBuffer)) {
 			Log_Debug("ERROR: asctime_r failed with error code: %s (%d).\n", strerror(errno),

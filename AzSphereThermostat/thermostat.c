@@ -27,15 +27,17 @@ void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 
 void runCycle(float roomTemp_C)
 {
 	int8_t state = -1;
+	bool checklist = preRunChecklist();
+
 	// Check if room is below target temperature
-	if (preRunChecklist() && roomTemp_C <= (userSettings->targetTemp_C - userSettings->lower_threshold))
+	if (checklist && roomTemp_C <= (userSettings->targetTemp_C - userSettings->lower_threshold))
 	{
 		Log_Debug("[INFO:] Below target\n");
 		// Run furnace until room reaches target
 		state = true;
 	}
 	// Check if room is above target temperature
-	else if (preRunChecklist() && roomTemp_C >= (userSettings->targetTemp_C + userSettings->upper_threshold))
+	else if (checklist && roomTemp_C >= (userSettings->targetTemp_C + userSettings->upper_threshold))
 	{
 		Log_Debug("[INFO:] Above target\n");
 		state = false;
@@ -47,7 +49,7 @@ void runCycle(float roomTemp_C)
 		state = true;
 	}
 	// check if room is above baseline temperature
-	else if (!preRunChecklist() && roomTemp_C >= (userSettings->baselineTemp_C + userSettings->upper_threshold))
+	else if (!checklist && roomTemp_C >= (userSettings->baselineTemp_C + userSettings->upper_threshold))
 	{
 		Log_Debug("[INFO:] Above baseline\n");
 		state = false;
@@ -81,7 +83,7 @@ float sampleTemperature()
 bool preRunChecklist()
 {
 	// Check if motion has been detected, if not then don't run the furnace
-	if (!motion())
+	if (!motionTimeoutCheck(userSettings->motionDetectorSec))
 		return false;
 
 	// All checks passed
