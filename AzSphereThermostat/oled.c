@@ -30,44 +30,53 @@ void updateUserSettings()
 	{
 	case TARGET:
 	{
-		settings->targetTemp_C = temporary_setting;
+		if (temporary_setting >= settings->baselineTemp_C && temporary_setting <= 32)
+			settings->targetTemp_C = temporary_setting;
 	}
 	break;
 	case THRESHOLDLOWER:
 	{
-		settings->lower_threshold = temporary_setting;
+		if (temporary_setting >= 0 && temporary_setting <= 5)
+			settings->lower_threshold = temporary_setting;
 	}
 	break;
 	case THRESHOLDUPPER:
 	{
-		settings->upper_threshold = temporary_setting;
+		if (temporary_setting >= 0 && temporary_setting <= 5)
+			settings->upper_threshold = temporary_setting;
 	}
 	break;
 	case BASELINE:
 	{
-		settings->baselineTemp_C = temporary_setting;
+		if (temporary_setting >= 10 && temporary_setting <= 15)
+			settings->baselineTemp_C = temporary_setting;
 	}
 	break;
 	case TOTALSAMPLES:
 	{
-		settings->totalSamples = temporary_setting;
+		if (temporary_setting >= 1 && temporary_setting <= 20)
+			settings->totalSamples = temporary_setting;
 	}
 	break;
 	case SAMPLEPERIOD:
 	{
-		reconfigureTimer = true;
-		struct timespec t = { temporary_setting, 0 };
-		settings->samplePeriod = t;
+		if (temporary_setting >= 5 && temporary_setting <= 300) {
+			reconfigureTimer = true;
+			struct timespec t = { temporary_setting, 0 };
+			settings->samplePeriod = t;
+		}
 	}
 	break;
 	case SCREENTIMEOUT:
 	{
-		settings->screenTimeoutSec = temporary_setting;
+		if (temporary_setting >= 1 && temporary_setting <= 180)
+			settings->screenTimeoutSec = temporary_setting;
 	}
 	break;
 	case MOTIONDETECTION:
 	{
-		settings->motionDetectorSec = temporary_setting;
+		if(temporary_setting >= 1 && temporary_setting <= 72)
+			settings->motionDetectorSec = temporary_setting * 3600; // convert to seconds from hours
 	}
 	break;
 	default:
@@ -117,7 +126,7 @@ void updateTemporarySettingValue()
 	break;
 	case MOTIONDETECTION:
 	{
-		temporary_setting = settings->motionDetectorSec;
+		temporary_setting = settings->motionDetectorSec/3600; // convert from seconds to hours
 	}
 	break;
 	default:
