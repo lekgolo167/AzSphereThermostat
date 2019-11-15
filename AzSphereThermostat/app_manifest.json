@@ -5,12 +5,12 @@
   "EntryPoint": "/bin/app",
   "CmdArgs": [],
   "Capabilities": {
-    "AllowedConnections": [],
+    "AllowedConnections": ["192.168.0.6"],
     "I2cMaster": ["ISU2"],
-    "Gpio": [ 0, 1, 2, 10, 12, 13, 16 ],
+    "Gpio": [ 0, 1, 2, 10, 12, 13, 16, 17 ],
     "Uart": [],
     "SystemTime": true,
-    "WifiConfig": false
+    "WifiConfig": true
   },
   "ApplicationType":"Default"
 }

@@ -12,6 +12,7 @@
 extern int ISU_2_Fd;
 extern int GPIO_relay_Fd;
 extern int motionDetectorGpioFd;
+extern int furnaceRelayStateFd;
 extern int rotary_A_Fd;
 extern int rotary_B_Fd;
 extern int rotary_SW_Fd;

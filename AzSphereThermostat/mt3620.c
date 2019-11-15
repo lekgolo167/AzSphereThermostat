@@ -3,6 +3,7 @@
 int ISU_2_Fd = -1;
 int GPIO_relay_Fd = -1;
 int motionDetectorGpioFd = -1;
+int furnaceRelayStateFd = -1;
 // rotary encoder
 int rotary_A_Fd = -1;
 int rotary_B_Fd = -1;

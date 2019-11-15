@@ -6,6 +6,9 @@ struct HDC1080 *HDC1080_sensor;
 
 float temperatureSamples[20] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 int sampleAverageIndex = 0;
+long furnaceStartTime = 0;
+long furnaceStopTime = 0;
+long furnaceRunTime = 0;
 
 void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr)
 {
@@ -85,25 +88,89 @@ bool preRunChecklist()
 	// Check if motion has been detected, if not then don't run the furnace
 	if (!motionTimeoutCheck(userSettings->motionDetectorSec))
 		return false;
-
+	// TODO check if new cycle needs to be loaded into settings
 	// All checks passed
 	return true;
 };
 
 void furnaceRelay(bool powerON)
 {
-	//bool relayON;
-	//int result = GIPO_Get_value(furnaceRelayStateFd, &relayON);
-	//if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
-	//{
-	//  Log_Debug("[INFO:] In furnaceRelay\n");
-	//  //const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-	//  GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low); // connect opendrain
-	//  nanosleep(&sleepTime, NULL);
-	//  GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
-	//}
+	bool relayON;
+	int result = GPIO_GetValue(furnaceRelayStateFd, &relayON);
+	if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
+	{
+		// TODO calculate runtime
+		struct timespec currentTime;
+		clock_gettime(CLOCK_REALTIME, &currentTime);
+		if (powerON) {
+			furnaceStartTime = currentTime.tv_sec;
+		}
+		else {
+			furnaceStopTime = currentTime.tv_sec;
+			furnaceRunTime = furnaceStopTime - furnaceStartTime;
+			Log_Debug("RUNTIME: %d\n", furnaceRunTime);
+		}
+		//Log_Debug("[INFO:] In furnaceRelay\n");
+		//const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
+		//GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low); // connect opendrain
+		//nanosleep(&sleepTime, NULL);
+		//GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
+	}
 	if (powerON)
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
 	else
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
 };
+
+static void sendCURL(char* URLAndPath, char* dataFieldBuffer) {
+	CURL *curlHandle = NULL;
+	CURLcode res = 0;
+
+	bool isNetworkingReady = false;
+	if ((Networking_IsNetworkingReady(&isNetworkingReady) < 0) || !isNetworkingReady) {
+		Log_Debug("\nNot doing download because network is not up.\n");
+		goto exitLabel;
+	}
+
+	Log_Debug("\n -===- Starting download -===-\n");
+
+	// Init the cURL library.
+	if ((res = curl_global_init(CURL_GLOBAL_ALL)) != CURLE_OK) {
+		Log_Debug("curl_global_init");
+		goto exitLabel;
+	}
+
+	if ((curlHandle = curl_easy_init()) == NULL) {
+		Log_Debug("curl_easy_init() failed\n");
+		goto exitLabel;
+	}
+
+	// Specify URL to download.
+	// Important: any change in the domain name must be reflected in the AllowedConnections
+	// capability in app_manifest.json.
+	if ((res = curl_easy_setopt(curlHandle, CURLOPT_URL, URLAndPath)) != CURLE_OK) {
+		Log_Debug("curl_easy_setopt CURLOPT_URL");
+		goto exitLabel;
+	}
+
+	// Set output level to verbose.
+
+	if ((res = curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, dataFieldBuffer)) != CURLE_OK) {
+		Log_Debug("curl_easy_setopt CURLOPT_VERBOSE");
+		goto exitLabel;
+	}
+
+	// Perform the download of the web page.
+	if ((res = curl_easy_perform(curlHandle)) != CURLE_OK) {
+		Log_Debug(" -===- FAILED -===- \n");
+	}
+	else {
+		curl_easy_cleanup(curlHandle);
+		// Clean up cURL library's resources.
+		curl_global_cleanup();
+		Log_Debug("\n -===- Done Uploading -===-\n");
+	}
+
+exitLabel:
+	return;
+}

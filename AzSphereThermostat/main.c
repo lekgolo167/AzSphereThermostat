@@ -6,11 +6,14 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <curl/curl.h>
 
+#include "applibs_versions.h"
 #include <applibs/log.h>
 #include <applibs/i2c.h>
 #include <applibs/gpio.h>
 #include <applibs/rtc.h>
+#include <applibs/networking.h>
 
 #include "mt3620.h"
 #include "thermostat.h"
@@ -51,6 +54,59 @@ static int initI2C(void) {
 	return 0;
 }
 
+static void sendCURL(char* URLAndPath, char* dataFieldBuffer) {
+	CURL *curlHandle = NULL;
+	CURLcode res = 0;
+
+	bool isNetworkingReady = false;
+	if ((Networking_IsNetworkingReady(&isNetworkingReady) < 0) || !isNetworkingReady) {
+		Log_Debug("\nNot doing download because network is not up.\n");
+		goto exitLabel;
+	}
+
+	Log_Debug("\n -===- Starting download -===-\n");
+
+	// Init the cURL library.
+	if ((res = curl_global_init(CURL_GLOBAL_ALL)) != CURLE_OK) {
+		Log_Debug("curl_global_init");
+		goto exitLabel;
+	}
+
+	if ((curlHandle = curl_easy_init()) == NULL) {
+		Log_Debug("curl_easy_init() failed\n");
+		goto exitLabel;
+	}
+
+	// Specify URL to download.
+	// Important: any change in the domain name must be reflected in the AllowedConnections
+	// capability in app_manifest.json.
+	if ((res = curl_easy_setopt(curlHandle, CURLOPT_URL, URLAndPath)) != CURLE_OK) {
+		Log_Debug("curl_easy_setopt CURLOPT_URL");
+		goto exitLabel;
+	}
+
+	// Set output level to verbose.
+	
+	if ((res = curl_easy_setopt(curlHandle, CURLOPT_POSTFIELDS, dataFieldBuffer)) != CURLE_OK) {
+		Log_Debug("curl_easy_setopt CURLOPT_VERBOSE");
+		goto exitLabel;
+	}
+
+	// Perform the download of the web page.
+	if ((res = curl_easy_perform(curlHandle)) != CURLE_OK) {
+		Log_Debug(" -===- FAILED -===- \n");
+	}
+	else {
+		curl_easy_cleanup(curlHandle);
+		// Clean up cURL library's resources.
+		curl_global_cleanup();
+		Log_Debug("\n -===- Done Uploading -===-\n");
+	}
+
+exitLabel:
+	return;
+}
+
 /// <summary>
 ///     Handle button timer event: if the button is pressed, report the event to the IoT Hub.
 /// </summary>
@@ -59,7 +115,8 @@ static void ButtonTimerEventHandler(EventData *eventData)
 	if (ConsumeTimerFdEvent(buttonPollTimerFd) != 0) {
 		return;
 	}
-
+	struct timespec currentTime;
+	clock_gettime(CLOCK_REALTIME, &currentTime);
 	//
 	///////////////		Rotary Encoder		/////////////////////
 	int result = GPIO_GetValue(rotary_A_Fd, &rotary_A_State);
@@ -68,6 +125,8 @@ static void ButtonTimerEventHandler(EventData *eventData)
 		result = GPIO_GetValue(rotary_B_Fd, &rotary_B_State);
 		if (docount) { // Each time the knob is turned it counts 2 movments so we need to only check every other time
 			if (rotary_B_State != rotary_A_State) {
+				lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
+
 				if (edit_oled_menu) {
 					temporary_setting++;
 					Log_Debug("Temp: %d\n", temporary_setting);
@@ -96,6 +155,9 @@ static void ButtonTimerEventHandler(EventData *eventData)
 	// Check the state of the rotary button/switch; it's active LOW
 	result = GPIO_GetValue(rotary_SW_Fd, &rotary_SW_State);
 	if (rotary_SW_LastState != rotary_SW_State) {
+
+		lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
+
 		rotary_SW_LastState = rotary_SW_State;
 		Log_Debug("SW: %d\n", rotary_SW_State);
 
@@ -128,6 +190,9 @@ static void ButtonTimerEventHandler(EventData *eventData)
 	// If the A button has just been pressed, send a telemetry message
 	// The button has GPIO_Value_Low when pressed and GPIO_Value_High when released
 	if (newButtonAState != buttonAState) {
+
+		lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
+
 		if (newButtonAState == GPIO_Value_Low) {
 			Log_Debug("Button A pressed!\n");
 			oled_menu_state++;
@@ -154,6 +219,9 @@ static void ButtonTimerEventHandler(EventData *eventData)
 	// If the B button has just been pressed/released, send a telemetry message
 	// The button has GPIO_Value_Low when pressed and GPIO_Value_High when released
 	if (newButtonBState != buttonBState) {
+
+		lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
+
 		if (newButtonBState == GPIO_Value_Low) {
 			// Send Telemetry here
 			Log_Debug("Button B pressed!\n");
@@ -181,6 +249,11 @@ static void SensorTimerEventHandler(EventData *eventData) {
 	}
 	sampleTemperature();
 	update_oled();
+
+	char path[] = "192.168.0.6:1880/temp";
+	char buffer[50];
+	sprintf(buffer, "TEMP=%f&HUM=%f\0", HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity);
+	sendCURL(path, buffer);
 }
 
 static void MotionTimerEventHandler(EventData *eventData) {
@@ -220,6 +293,13 @@ static int initGPIO()
 	}
 	rotary_SW_Fd = GPIO_OpenAsInput(16);
 	if (rotary_SW_Fd < 0) {
+		Log_Debug(
+			"Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
+			strerror(errno), errno);
+		return -1;
+	}
+	furnaceRelayStateFd = GPIO_OpenAsInput(17);
+	if (furnaceRelayStateFd < 0) {
 		Log_Debug(
 			"Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
 			strerror(errno), errno);
@@ -277,7 +357,7 @@ static int initTimerEventHandlers() {
 		Log_Debug("Failed to create timer\n");
 		return -1;
 	}
-	struct timespec motionDetectionPeriod = { 3,0 };
+	struct timespec motionDetectionPeriod = { 1,0 };
 	motionPollTimerFd =
 		CreateTimerFdAndAddToEpoll(epollFd, &motionDetectionPeriod, &motionEventData, EPOLLIN);
 	if (sensorPollTimerFd < 0) {
@@ -337,9 +417,11 @@ int main(void)
 	update_oled();
 	initCycle(&userSettings);//remove later
 	initTimerEventHandlers();
-	setenv("TZ", "GMT+6", 1);
+
+	setenv("TZ", "UTC+8MT", 1);
 	tzset();
 	PrintTime();
+	
     while (true) {
 		//if not away else maintain baseline
 		//runCycle();
