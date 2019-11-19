@@ -1,22 +1,13 @@
 #pragma once
 
 #include <stdbool.h>
+#include <applibs/rtc.h>
+#include <time.h>
 
 #include "thermostat.h"
+#include "linkedList.h"
 
-
-struct cycle {
-	int start_hour;
-	int start_min;
-	int end_hour;
-	int end_min;
-	float temp_C;
-};
-
-struct day {
-	struct cycle cycles[5];
-};
-
+cycle_t * day[7];
 
 
 /// <summary>

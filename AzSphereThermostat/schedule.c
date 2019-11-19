@@ -1,8 +1,12 @@
 #include "schedule.h"
 
+int currentCycleDay = -1;
+int currentCycleHour = -1;
+int currentCycleMin = -1;
+
 void initCycle(struct thermostatSettings *userSettings_ptr) {
 	// TODO remove hardcoded defaults and replace these with ones loaded from current schedule
-	userSettings_ptr->targetTemp_C = 21.0;
+	userSettings_ptr->targetTemp_C = 20.0;
 	userSettings_ptr->lower_threshold = 2.0;
 	userSettings_ptr->upper_threshold = 1.0;
 	userSettings_ptr->totalSamples = 5;
@@ -11,78 +15,38 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 	userSettings_ptr->baselineTemp_C = 10.0;
 	userSettings_ptr->motionDetectorSec = 43200;
 	userSettings_ptr->screenTimeoutSec = 30;
-	const struct day schedule[] =
-	{
-		{
-			.cycles = {
-		//Sunday
-			{
-				.start_hour = 0,
-				.start_min = 0,
-				.end_hour = 6,
-				.end_min = 0,
-				.temp_C = 15.0
-			},{
-				.start_hour = 6,
-				.start_min = 1,
-				.end_hour = 8,
-				.end_min = 0,
-				.temp_C = 22.0
-			},
-			{
-				.start_hour = 8,
-				.start_min = 1,
-				.end_hour = 18,
-				.end_min = 0,
-				.temp_C = 15.0
-			},
-			{
-				.start_hour = 18,
-				.start_min = 1,
-				.end_hour = 23,
-				.end_min = 59,
-				.temp_C = 22.0
-			}
+	
+	for (int i = 0; i < 7; i++) {
+		day[i] = malloc(sizeof(cycle_t));
+		day[i]->start_hour = 20;
+		day[i]->start_min = 0;
+		day[i]->temp_C = 24.0;
+		float count = 23.0;
+
+		for (int j = 14; j > 2; j -= 1) {
+			push_end(day[i], j, 30, count);
+			count -= 1.0;
 		}
-	},
-	{
-		.cycles = {
-		//Monday
-		{
-			.start_hour = 0,
-			.start_min = 0,
-			.end_hour = 6,
-			.end_min = 0,
-			.temp_C = 15.0
-		},
-		{
-			.start_hour = 6,
-			.start_min = 1,
-			.end_hour = 8,
-			.end_min = 0,
-			.temp_C = 22.0
-		},
-		{
-			.start_hour = 8,
-			.start_min = 1,
-			.end_hour = 18,
-			.end_min = 0,
-			.temp_C = 15.0
-		},
-		{
-			.start_hour = 18,
-			.start_min = 1,
-			.end_hour = 23,
-			.end_min = 59,
-			.temp_C = 22.0
-		}
+		push_end(day[i], 0, 0, count);
 	}
-},
-	};
-	float test = schedule[0].cycles[1].temp_C;
-	Log_Debug("TESTSSSSSSSS   %f\n", test);
+
+	for (int i = 0; i < 7; i++) {
+		Log_Debug("-==- %d\n", i);
+		print_list(day[i]);
+
+	}
+	
 }
 
 bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
+	struct timespec currentTime;
+	clock_gettime(CLOCK_REALTIME, &currentTime);
+	struct tm * now = localtime(&currentTime.tv_sec);
+	
+	if (currentCycleDay != now->tm_wday) {
+		currentCycleDay = now->tm_wday;
+		findNextCycle(day[currentCycleDay], now->tm_hour, now->tm_min);
+		Log_Debug("DAY IS %d \n", currentCycleDay);
+	}
 	return false;
 }

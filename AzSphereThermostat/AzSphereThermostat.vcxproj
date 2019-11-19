@@ -46,7 +46,9 @@
     <ClCompile Include="epoll_timerfd_utilities.c" />
     <ClCompile Include="HC-SR04.c" />
     <ClCompile Include="HDC1080.c" />
+    <ClCompile Include="linkedLIst.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="msg.c" />
     <ClCompile Include="mt3620.c" />
     <ClCompile Include="oled.c" />
     <ClCompile Include="schedule.c" />
@@ -60,6 +62,8 @@
     <ClInclude Include="font.h" />
     <ClInclude Include="HC-SR04.h" />
     <ClInclude Include="HDC1080.h" />
+    <ClInclude Include="linkedList.h" />
+    <ClInclude Include="msg.h" />
     <ClInclude Include="mt3620.h" />
     <ClInclude Include="mt3620_rdb.h" />
     <ClInclude Include="oled.h" />
