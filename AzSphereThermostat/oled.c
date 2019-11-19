@@ -179,7 +179,7 @@ void update_oled()
 		break;
 		case 7:
 		{
-			
+			displayCycle();
 		}
 		break;
 
@@ -590,6 +590,37 @@ void motionSettings()
 	boundScrollCounter(1, 2, 9);
 	oled_menu_item = items[oled_scroll_counter];
 	// Send the buffer to OLED RAM
+	sd1306_refresh();
+}
+
+void displayCycle()
+{
+	uint32_t i;
+	uint8_t string_data[10];
+	// Strings for labels
+	uint8_t hr_str[] = "Cycle HR:";
+	uint8_t min_str[] = "Cycle M:";
+
+	// Clear OLED buffer
+	clear_oled_buffer();
+
+	// Draw the title
+	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "Current Cycle", FONT_SIZE_TITLE, white_pixel);
+
+	intToStr(settings->currentCycle->start_hour, string_data, 1);
+	// Draw a label at line 1
+	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, hr_str, FONT_SIZE_LINE, white_pixel);
+	// Draw the value of x
+	sd1306_draw_string(sizeof(hr_str) * 6, OLED_LINE_1_Y, string_data, FONT_SIZE_LINE, white_pixel);
+
+
+	intToStr(settings->currentCycle->start_min, string_data, 1);
+
+	// Draw a label at line 1
+	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, min_str, FONT_SIZE_LINE, white_pixel);
+	// Draw the value of x
+	sd1306_draw_string(sizeof(min_str) * 6, OLED_LINE_2_Y, string_data, FONT_SIZE_LINE, white_pixel);
+
 	sd1306_refresh();
 }
 

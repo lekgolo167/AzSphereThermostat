@@ -12,6 +12,7 @@
 #include "HDC1080.h"
 #include "HC-SR04.h"
 #include "schedule.h"
+#include "linkedList.h"
 
 
 /// <summary>
@@ -27,6 +28,7 @@ struct thermostatSettings
 	unsigned int totalSamples;
 	unsigned int screenTimeoutSec;
 	unsigned int motionDetectorSec;
+	cycle_t* currentCycle;
 };
 
 /// <summary>

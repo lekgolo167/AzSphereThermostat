@@ -58,6 +58,7 @@ void set_temp();
 void set_thresh();
 void motionSettings();
 void displayDateAndTime();
+void displayCycle();
 
 void boundScrollCounter(int8_t low, int8_t high, uint8_t height);
 /**
