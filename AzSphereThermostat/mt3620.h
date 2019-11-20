@@ -40,6 +40,8 @@ extern bool oledScreenON;
 extern bool reconfigureTimer;
 
 extern long lastMotionDetectedTimeStamp;
+extern long furnaceStartTime;
+extern long furnaceRunTime;
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

@@ -30,3 +30,5 @@ bool oledScreenON = true;
 bool reconfigureTimer = false;
 
 long lastMotionDetectedTimeStamp = 0;
+long furnaceStartTime = 0;
+long furnaceRunTime = 0;

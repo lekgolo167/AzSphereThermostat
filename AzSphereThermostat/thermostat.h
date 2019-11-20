@@ -20,10 +20,10 @@
 /// </summary>
 struct thermostatSettings
 {
-	float targetTemp_C;
+	float targetTemp_F;
 	float lower_threshold;
 	float upper_threshold;
-	float baselineTemp_C;
+	float baselineTemp_F;
 	struct timespec samplePeriod;
 	unsigned int totalSamples;
 	unsigned int screenTimeoutSec;
@@ -39,7 +39,7 @@ void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 
 /// <summary>
 ///     Logic to maintain temperature
 /// </summary>
-void runCycle(float roomTemp_C);
+void runCycle(float roomTemp_F);
 
 /// <summary>
 ///     This function waits for the conditions to be right to run the furnace
@@ -54,7 +54,7 @@ float sampleTemperature();
 /// <summary>
 ///     This function turns on the furnace relay then samples the air until a threshold is reached
 /// </summary>
-void runFurnace(float targetTemp_C);
+void runFurnace(float targetTemp_F);
 
 /// <summary>
 ///     This function checks the pre-requirements to run the furnace

@@ -52,7 +52,7 @@ extern void update_oled();
 
 extern void oled_draw_logo(void);
 
-void update_other();
+void showSensorData();
 void sampleSettings();
 void set_temp();
 void set_thresh();

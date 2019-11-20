@@ -6,9 +6,6 @@ struct HDC1080 *HDC1080_sensor;
 
 float temperatureSamples[20] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 int sampleAverageIndex = 0;
-long furnaceStartTime = 0;
-long furnaceStopTime = 0;
-long furnaceRunTime = 0;
 
 void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr)
 {
@@ -21,38 +18,38 @@ void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 
 		nanosleep(&sleeptime, NULL);
 	};
 
-	Log_Debug("initializing sample arrary with: %f\n", HDC1080_sensor_ptr->temp_C);
+	Log_Debug("initializing sample arrary with: %f\n", HDC1080_sensor_ptr->temp_F);
 	for (int i = 0; i < 20; i++) {
-		temperatureSamples[i] = HDC1080_sensor_ptr->temp_C;
+		temperatureSamples[i] = HDC1080_sensor_ptr->temp_F;
 	}
 };
 
-void runCycle(float roomTemp_C)
+void runCycle(float roomTemp_F)
 {
 	int8_t state = -1;
 	bool checklist = preRunChecklist();
 
 	// Check if room is below target temperature
-	if (checklist && roomTemp_C <= (userSettings->targetTemp_C - userSettings->lower_threshold))
+	if (checklist && roomTemp_F <= (userSettings->targetTemp_F - userSettings->lower_threshold))
 	{
 		Log_Debug("[INFO:] Below target\n");
 		// Run furnace until room reaches target
 		state = true;
 	}
 	// Check if room is above target temperature
-	else if (checklist && roomTemp_C >= (userSettings->targetTemp_C + userSettings->upper_threshold))
+	else if (checklist && roomTemp_F >= (userSettings->targetTemp_F + userSettings->upper_threshold))
 	{
 		Log_Debug("[INFO:] Above target\n");
 		state = false;
 	}
 	// Check if room is below baseline temperature
-	else if (roomTemp_C <= (userSettings->baselineTemp_C - userSettings->lower_threshold)) {
+	else if (roomTemp_F <= (userSettings->baselineTemp_F - userSettings->lower_threshold)) {
 		// Run furnace until room reaches baseline
 		Log_Debug("[INFO:] Below baseline\n");
 		state = true;
 	}
 	// check if room is above baseline temperature
-	else if (!checklist && roomTemp_C >= (userSettings->baselineTemp_C + userSettings->upper_threshold))
+	else if (!checklist && roomTemp_F >= (userSettings->baselineTemp_F + userSettings->upper_threshold))
 	{
 		Log_Debug("[INFO:] Above baseline\n");
 		state = false;
@@ -70,17 +67,17 @@ float sampleTemperature()
 	HDC1080GetTemperature();
 	HDC1080GetHumidity();
 
-	temperatureSamples[sampleAverageIndex++] = HDC1080_sensor->temp_C;
+	temperatureSamples[sampleAverageIndex++] = HDC1080_sensor->temp_F;
 	if (sampleAverageIndex > userSettings->totalSamples) {
 		sampleAverageIndex = 0;
 	}
-	float averageTemp_C = 0.0;
+	float averageTemp_F = 0.0;
 	for (int i = 0; i < userSettings->totalSamples; i++) {
-		averageTemp_C += temperatureSamples[i];
+		averageTemp_F += temperatureSamples[i];
 	}
-	averageTemp_C /= userSettings->totalSamples;
+	averageTemp_F /= userSettings->totalSamples;
 
-	runCycle(averageTemp_C);
+	runCycle(averageTemp_F);
 };
 
 bool preRunChecklist()
@@ -88,9 +85,9 @@ bool preRunChecklist()
 	// Check if motion has been detected, if not then don't run the furnace
 	if (!motionTimeoutCheck(userSettings->motionDetectorSec))
 		return false;
-	// TODO check if new cycle needs to be loaded into settings
-	// All checks passed
+	// check if new cycle needs to be loaded into settings
 	cycleExpired(userSettings);
+	// All checks passed
 
 	return true;
 };
@@ -108,9 +105,13 @@ void furnaceRelay(bool powerON)
 			furnaceStartTime = currentTime.tv_sec;
 		}
 		else {
-			furnaceStopTime = currentTime.tv_sec;
-			furnaceRunTime = furnaceStopTime - furnaceStartTime;
+			furnaceRunTime = currentTime.tv_sec - furnaceStartTime;
 			Log_Debug("RUNTIME: %d\n", furnaceRunTime);
+
+			char path[] = "192.168.0.6:1880/runtime";
+			char buffer[50];
+			sprintf(buffer, "RUNTIME=%d\0", furnaceRunTime);
+			sendCURL(path, buffer);
 		}
 		//Log_Debug("[INFO:] In furnaceRelay\n");
 		//const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
@@ -119,7 +120,7 @@ void furnaceRelay(bool powerON)
 		//GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
 	}
 	if (powerON)
-		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
-	else
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
+	else
+		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
 };
