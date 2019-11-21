@@ -31,20 +31,26 @@ void updateUserSettings()
 	{
 	case TARGET:
 	{
-		if (temporary_setting >= settings->baselineTemp_F && temporary_setting <= 95)
+		if (temporary_setting >= settings->baselineTemp_F && temporary_setting <= 95) {
+			sendCURLStats(settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold, temporary_setting, settings->lower_threshold, settings->upper_threshold);
 			settings->targetTemp_F = temporary_setting;
+		}
 	}
 	break;
 	case THRESHOLDLOWER:
 	{
-		if (temporary_setting >= 0 && temporary_setting <= 5)
+		if (temporary_setting >= 0 && temporary_setting <= 5) {
+			sendCURLStats(settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold, settings->targetTemp_F, temporary_setting, settings->upper_threshold);
 			settings->lower_threshold = temporary_setting;
+		}
 	}
 	break;
 	case THRESHOLDUPPER:
 	{
-		if (temporary_setting >= 0 && temporary_setting <= 5)
+		if (temporary_setting >= 0 && temporary_setting <= 5) {
+			sendCURLStats(settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold, settings->targetTemp_F, settings->lower_threshold, temporary_setting);
 			settings->upper_threshold = temporary_setting;
+		}
 	}
 	break;
 	case BASELINE:
@@ -526,13 +532,20 @@ void displayCycle()
 	// Draw the title
 	sd1306_draw_string(OLED_TITLE_X, OLED_TITLE_Y, "Cycle Info", FONT_SIZE_TITLE, white_pixel);
 
-	// Draw Start time on line 1
+	// Draw start time on line 1
 	sprintf(buffer, "Start time %02d:%02d\0", settings->currentCycle->start_hour, settings->currentCycle->start_min);
 	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, buffer, FONT_SIZE_LINE, white_pixel);
-
-	// Draw runtime on line 2
-	sprintf(buffer, "Runtime %d min\0", furnaceRunTime / 60);
+	
+	// Draw end time on line 2
+	if (settings->currentCycle->prev != NULL)
+		sprintf(buffer, "End time   %02d:%02d\0", settings->currentCycle->prev->start_hour, settings->currentCycle->prev->start_min);
+	else
+		sprintf(buffer, "End time   %02d:%02d\0", 0,0);
 	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, buffer, FONT_SIZE_LINE, white_pixel);
+
+	// Draw runtime on line 3
+	sprintf(buffer, "Runtime %d min\0", furnaceRunTime / 60);
+	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, buffer, FONT_SIZE_LINE, white_pixel);
 
 	// Send the buffer to OLED RAM
 	sd1306_refresh();

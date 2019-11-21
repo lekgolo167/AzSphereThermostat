@@ -17,16 +17,16 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 	for (int i = 0; i < 7; i++) {
 		day[i] = malloc(sizeof(cycle_t));
 		day[i]->id = id++;
-		day[i]->start_hour = 23;
+		day[i]->start_hour = 22;
 		day[i]->start_min = 0;
-		day[i]->temp_F = 80.0;
-		float temp_F = 78.0;
+		day[i]->temp_F = 72.0;
+		day[i]->prev = NULL;
 
-		for (int j = 22; j > 2; j -= 2) {
-			push_end(day[i], id++, j, 10, temp_F);
-			temp_F -= 1.0;
-		}
-		push_end(day[i], id++, 0, 0, temp_F);
+		push_end(day[i], id++, 20, 0, 60.0);
+		push_end(day[i], id++, 18, 5, 72.0);
+		push_end(day[i], id++, 8, 30, 60.0);
+		push_end(day[i], id++, 7, 10, 70.0);
+		push_end(day[i], id++, 0, 0, 60.0);
 	}
 
 	for (int i = 0; i < 7; i++) {
@@ -45,20 +45,11 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
 	cycle_t* loadedCycle = findNextCycle(day[now->tm_wday], now->tm_hour, now->tm_min);
 	if (loadedCycle->id != userSettings_ptr->currentCycle->id) {
 
-		char path[] = "192.168.0.6:1880/stats";
-		char buffer[70];
-		sprintf(buffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold , userSettings_ptr->upper_threshold);
-		sendCURL(path, buffer);
-
-		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-		nanosleep(&sleepTime, NULL);
+		sendCURLStats(userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold, loadedCycle->temp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
 
 		userSettings_ptr->currentCycle = loadedCycle;
 		userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
 
-		sprintf(buffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
-		sendCURL(path, buffer);
-		
 		Log_Debug(" -===- loaded cycle is: %d:%d (%.1f F°)\n", loadedCycle->start_hour, loadedCycle->start_min, loadedCycle->temp_F);
 	}
 	return false;

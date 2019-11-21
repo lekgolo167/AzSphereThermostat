@@ -8,6 +8,7 @@
 #include "sd1306.h"
 #include "mt3620.h"
 #include "HDC1080.h"
+#include "msg.h"
 #include "thermostat.h"
 #include <applibs/rtc.h>
 
