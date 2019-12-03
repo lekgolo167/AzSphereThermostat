@@ -349,6 +349,12 @@ void showSensorData()
 	// Draw humidity at line 3
 	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y, buffer, FONT_SIZE_LINE, white_pixel);
 
+	// Convert average temperature to string
+	sprintf(buffer, "Average:  %.1f F°\0", averageTemp_F);
+
+	// Draw humidity at line 3
+	sd1306_draw_string(OLED_LINE_4_X, OLED_LINE_4_Y, buffer, FONT_SIZE_LINE, white_pixel);
+
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
 }

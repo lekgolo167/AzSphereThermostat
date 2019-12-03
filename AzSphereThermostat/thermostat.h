@@ -31,6 +31,8 @@ struct thermostatSettings
 	cycle_t* currentCycle;
 };
 
+float averageTemp_F;
+
 /// <summary>
 ///     This function sets up the struct pointers to run the thermostat
 /// </summary>

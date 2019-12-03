@@ -357,23 +357,25 @@ int main(void)
 	userSettings_ptr = &userSettings;
 	HDC1080_sensor_ptr = &HDC1080_sensor;
 
+	setenv("TZ", "UTC+8MT", 1);
+	tzset();
+	PrintTime();
+
 	initI2C();
 	initGPIO();
 	HDC1080Begin(&HDC1080_sensor);
 	initThermostat(&userSettings, &HDC1080_sensor);
-
 	oled_init(&HDC1080_sensor, &userSettings);
-	update_oled();
-	initCycle(&userSettings);//remove later
 	initTimerEventHandlers();
+	update_oled();
 
-	setenv("TZ", "UTC+8MT", 1);
-	tzset();
-	PrintTime();
+	const struct timespec sleepTime = { 60, 0 }; // 60 s
+	nanosleep(&sleepTime, NULL); // Wait for RTC to initialize with the correct date and time
+
+	initCycle(&userSettings);
 	
     while (true) {
-		//if not away else maintain baseline
-		//runCycle();
+
 		WaitForEventAndCallHandler(epollFd);
 		if (reconfigureTimer) {
 			reconfigureSensorEpollTimer();

@@ -1,33 +1,117 @@
 #include "schedule.h"
 
 void initCycle(struct thermostatSettings *userSettings_ptr) {
-	// TODO remove hardcoded defaults and replace these with ones loaded from current schedule
+	
 	userSettings_ptr->targetTemp_F = 70.0;
 	userSettings_ptr->lower_threshold = 2.0;
 	userSettings_ptr->upper_threshold = 1.0;
 	userSettings_ptr->totalSamples = 5;
 	userSettings_ptr->samplePeriod.tv_nsec = 0;
 	userSettings_ptr->samplePeriod.tv_sec = 30;
-	userSettings_ptr->baselineTemp_F = 50.0;
+	userSettings_ptr->baselineTemp_F = 55.0;
 	userSettings_ptr->motionDetectorSec = 43200;
 	userSettings_ptr->screenTimeoutSec = 30;
 	userSettings_ptr->currentCycle = NULL;
 	
 	int id = 0;
-	for (int i = 0; i < 7; i++) {
-		day[i] = malloc(sizeof(cycle_t));
-		day[i]->id = id++;
-		day[i]->start_hour = 22;
-		day[i]->start_min = 0;
-		day[i]->temp_F = 72.0;
-		day[i]->prev = NULL;
+	int i = 0;
+	// Sunday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 20;
+	day[i]->start_min = 0;
+	day[i]->temp_F = 72.0;
+	day[i]->prev = NULL;
 
-		push_end(day[i], id++, 20, 0, 60.0);
-		push_end(day[i], id++, 18, 5, 72.0);
-		push_end(day[i], id++, 8, 30, 60.0);
-		push_end(day[i], id++, 7, 10, 70.0);
-		push_end(day[i], id++, 0, 0, 60.0);
-	}
+	push_end(day[i], id++, 17, 15, 60.0);
+	push_end(day[i], id++, 15, 0, 72.0);
+	push_end(day[i], id++, 12, 0, 60.0);
+	push_end(day[i], id++, 10, 0, 70.0);
+	push_end(day[i], id++, 0, 0, 60.0);
+
+	i++;
+	// Monday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 22;
+	day[i]->start_min = 30;
+	day[i]->temp_F = 70.0;
+	day[i]->prev = NULL;
+
+	push_end(day[i], id++, 20, 30, 60.0);
+	push_end(day[i], id++, 17, 30, 70.0);
+	push_end(day[i], id++, 10, 0, 60.0);
+	push_end(day[i], id++, 8, 30, 65.0);
+	push_end(day[i], id++, 0, 0, 60.0);
+
+	i++;
+	// Tuesday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 20;
+	day[i]->start_min = 0;
+	day[i]->temp_F = 72.0;
+	day[i]->prev = NULL;
+
+	push_end(day[i], id++, 18, 5, 60.0);
+	push_end(day[i], id++, 12, 0, 70.0);
+	push_end(day[i], id++, 0, 0, 60.0);
+
+	i++;
+	// Wednesday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 18;
+	day[i]->start_min = 45;
+	day[i]->temp_F = 72.0;
+	day[i]->prev = NULL;
+
+	push_end(day[i], id++, 8, 30, 60.0);
+	push_end(day[i], id++, 7, 10, 70.0);
+	push_end(day[i], id++, 0, 0, 60.0);
+
+	i++;
+	// Thursday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 20;
+	day[i]->start_min = 0;
+	day[i]->temp_F = 72.0;
+	day[i]->prev = NULL;
+
+	push_end(day[i], id++, 18, 5, 60.0);
+	push_end(day[i], id++, 12, 0, 70.0);
+	push_end(day[i], id++, 0, 0, 60.0);
+
+	i++;
+	// Friday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 22;
+	day[i]->start_min = 0;
+	day[i]->temp_F = 72.0;
+	day[i]->prev = NULL;
+
+	push_end(day[i], id++, 20, 0, 60.0);
+	push_end(day[i], id++, 16, 0, 72.0);
+	push_end(day[i], id++, 8, 30, 60.0);
+	push_end(day[i], id++, 7, 10, 70.0);
+	push_end(day[i], id++, 0, 0, 60.0);
+
+	i++;
+	// Saturday
+	day[i] = malloc(sizeof(cycle_t));
+	day[i]->id = id++;
+	day[i]->start_hour = 20;
+	day[i]->start_min = 0;
+	day[i]->temp_F = 72.0;
+	day[i]->prev = NULL;
+
+	push_end(day[i], id++, 18, 0, 60.0);
+	push_end(day[i], id++, 14, 5, 72.0);
+	push_end(day[i], id++, 11, 30, 60.0);
+	push_end(day[i], id++, 8, 30, 70.0);
+	push_end(day[i], id++, 0, 0, 60.0);
 
 	for (int i = 0; i < 7; i++) {
 		Log_Debug("-==- %d\n", i);
@@ -35,6 +119,7 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 
 	}
 	userSettings_ptr->currentCycle = day[0];
+	cycleExpired(userSettings_ptr);
 }
 
 bool cycleExpired(struct thermostatSettings *userSettings_ptr) {

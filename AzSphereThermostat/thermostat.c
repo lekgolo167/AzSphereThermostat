@@ -71,7 +71,7 @@ float sampleTemperature()
 	if (sampleAverageIndex > userSettings->totalSamples) {
 		sampleAverageIndex = 0;
 	}
-	float averageTemp_F = 0.0;
+	averageTemp_F = 0.0;
 	for (int i = 0; i < userSettings->totalSamples; i++) {
 		averageTemp_F += temperatureSamples[i];
 	}
@@ -96,6 +96,7 @@ void furnaceRelay(bool powerON)
 {
 	bool relayON;
 	int result = GPIO_GetValue(furnaceRelayStateFd, &relayON);
+	Log_Debug("RELAY STATE %d, POWER %d\n", relayON, powerON);
 	if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
 	{
 		// TODO calculate runtime
@@ -113,14 +114,18 @@ void furnaceRelay(bool powerON)
 			sprintf(buffer, "RUNTIME=%d\0", furnaceRunTime);
 			sendCURL(path, buffer);
 		}
-		//Log_Debug("[INFO:] In furnaceRelay\n");
-		//const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-		//GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low); // connect opendrain
-		//nanosleep(&sleepTime, NULL);
-		//GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High); // go back to Z state
-	}
-	if (powerON)
+		Log_Debug("[INFO:] In furnaceRelay\n");
+		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
-	else
+		nanosleep(&sleepTime, NULL);
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
+
+		char path[] = "192.168.0.6:1880/furnaceState";
+		char buffer[50];
+		sprintf(buffer, "F_State=%d\0", relayON);
+		sendCURL(path, buffer);
+		nanosleep(&sleepTime, NULL);
+		sprintf(buffer, "F_State=%d\0", powerON);
+		sendCURL(path, buffer);
+	}
 };
