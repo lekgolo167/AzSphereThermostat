@@ -5,12 +5,12 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 	userSettings_ptr->targetTemp_F = 70.0;
 	userSettings_ptr->lower_threshold = 2.0;
 	userSettings_ptr->upper_threshold = 1.0;
-	userSettings_ptr->totalSamples = 5;
+	userSettings_ptr->totalSamples = 10;
 	userSettings_ptr->samplePeriod.tv_nsec = 0;
 	userSettings_ptr->samplePeriod.tv_sec = 30;
-	userSettings_ptr->baselineTemp_F = 55.0;
+	userSettings_ptr->baselineTemp_F = 58.0;
 	userSettings_ptr->motionDetectorSec = 43200;
-	userSettings_ptr->screenTimeoutSec = 30;
+	userSettings_ptr->screenTimeoutSec = 15;
 	userSettings_ptr->currentCycle = NULL;
 	
 	int id = 0;

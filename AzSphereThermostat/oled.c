@@ -190,7 +190,11 @@ void update_oled()
 		}
 		break;
 
-		default:
+		default: {
+			if (oled_menu_state > 7 || oled_menu_state < 0)
+				oled_menu_state = 0;
+			update_oled();
+		}
 		break;
 	}
 }
@@ -480,7 +484,7 @@ void sampleSettings()
 	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, buffer, FONT_SIZE_LINE, white_pixel);
 
 	// Confine the scroll line of the menu
-	boundScrollCounter(1, 3, 9);
+	boundScrollCounter(1, 2, 9);
 
 	// Save which item we are editing
 	oled_menu_item = items[oled_scroll_counter];

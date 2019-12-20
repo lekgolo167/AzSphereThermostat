@@ -29,7 +29,7 @@ void motionTimer(unsigned int screenTimeout) {
 	//Log_Debug("Interval: %d\n", interval);
 	if (interval > screenTimeout && oledScreenON) {
 
-		char path[] = "192.168.0.6:1880/motion";
+		char path[] = "192.168.0.27:1880/motion";
 		char buffer[] = "MOTION=1\0";
 		sendCURL(path, buffer);
 
@@ -46,7 +46,7 @@ void motionTimer(unsigned int screenTimeout) {
 	}
 	else if (interval < screenTimeout && !oledScreenON) {
 
-		char path[] = "192.168.0.6:1880/motion";
+		char path[] = "192.168.0.27:1880/motion";
 		char buffer[] = "MOTION=0\0";
 		sendCURL(path, buffer);
 

@@ -5,7 +5,7 @@
   "EntryPoint": "/bin/app",
   "CmdArgs": [],
   "Capabilities": {
-    "AllowedConnections": ["192.168.0.6"],
+    "AllowedConnections": ["192.168.0.27"],
     "I2cMaster": ["ISU2"],
     "Gpio": [ 0, 1, 2, 35, 12, 13, 16, 17 ],
     "Uart": [],
@@ -14,3 +14,4 @@
   },
   "ApplicationType":"Default"
 }
+ 

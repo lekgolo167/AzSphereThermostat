@@ -82,13 +82,13 @@ float sampleTemperature()
 
 bool preRunChecklist()
 {
+	// check if new cycle needs to be loaded into settings
+	cycleExpired(userSettings);
+	
 	// Check if motion has been detected, if not then don't run the furnace
 	if (!motionTimeoutCheck(userSettings->motionDetectorSec))
 		return false;
-	// check if new cycle needs to be loaded into settings
-	cycleExpired(userSettings);
 	// All checks passed
-
 	return true;
 };
 
@@ -109,7 +109,7 @@ void furnaceRelay(bool powerON)
 			furnaceRunTime = currentTime.tv_sec - furnaceStartTime;
 			Log_Debug("RUNTIME: %d\n", furnaceRunTime);
 
-			char path[] = "192.168.0.6:1880/runtime";
+			char path[] = "192.168.0.27:1880/runtime";
 			char buffer[50];
 			sprintf(buffer, "RUNTIME=%d\0", furnaceRunTime);
 			sendCURL(path, buffer);
@@ -120,7 +120,7 @@ void furnaceRelay(bool powerON)
 		nanosleep(&sleepTime, NULL);
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
 
-		char path[] = "192.168.0.6:1880/furnaceState";
+		char path[] = "192.168.0.27:1880/furnaceState";
 		char buffer[50];
 		sprintf(buffer, "F_State=%d\0", relayON);
 		sendCURL(path, buffer);

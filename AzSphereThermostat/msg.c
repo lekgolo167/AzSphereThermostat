@@ -54,7 +54,7 @@ void sendCURL(char* URLAndPath, char* dataFieldBuffer) {
 
 void sendCURLStats(float bt, float bl, float bh, float at, float al, float ah) {
 
-	char path[] = "192.168.0.6:1880/stats";
+	char path[] = "192.168.0.27:1880/stats";
 	char buffer[70];
 	sprintf(buffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", bt, bl, bh);
 	sendCURL(path, buffer);

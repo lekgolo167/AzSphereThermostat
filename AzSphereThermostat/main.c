@@ -198,10 +198,11 @@ static void SensorTimerEventHandler(EventData *eventData) {
 	sampleTemperature();
 	update_oled();
 
-	char path[] = "192.168.0.6:1880/temp";
+	char path[] = "192.168.0.27:1880/temp";
 	char buffer[50];
 	sprintf(buffer, "TEMP=%f&HUM=%f\0", HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity);
 	sendCURL(path, buffer);
+	Log_Debug("Checked Sensors\n");
 }
 
 static void MotionTimerEventHandler(EventData *eventData) {
@@ -366,13 +367,14 @@ int main(void)
 	HDC1080Begin(&HDC1080_sensor);
 	initThermostat(&userSettings, &HDC1080_sensor);
 	oled_init(&HDC1080_sensor, &userSettings);
-	initTimerEventHandlers();
+	
 	update_oled();
 
-	const struct timespec sleepTime = { 60, 0 }; // 60 s
+	const struct timespec sleepTime = { 30, 0 }; // 30 s
 	nanosleep(&sleepTime, NULL); // Wait for RTC to initialize with the correct date and time
-
 	initCycle(&userSettings);
+	initTimerEventHandlers();
+	
 	
     while (true) {
 
