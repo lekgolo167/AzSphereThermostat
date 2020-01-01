@@ -13,110 +13,30 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 	userSettings_ptr->screenTimeoutSec = 15;
 	userSettings_ptr->currentCycle = NULL;
 	
-	int id = 0;
-	int i = 0;
-	// Sunday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 20;
-	day[i]->start_min = 0;
-	day[i]->temp_F = 72.0;
-	day[i]->prev = NULL;
+	for (int i = 0; i < 7; i++) {
+		dayIDs[i] = 0;
+		day[i] = NULL;
+	}
 
-	push_end(day[i], id++, 17, 15, 60.0);
-	push_end(day[i], id++, 15, 0, 72.0);
-	push_end(day[i], id++, 12, 0, 60.0);
-	push_end(day[i], id++, 10, 0, 70.0);
-	push_end(day[i], id++, 0, 0, 60.0);
+	bool serverRunning = checkServerForScheduleUpdates();
+	if (!serverRunning) {
 
-	i++;
-	// Monday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 22;
-	day[i]->start_min = 30;
-	day[i]->temp_F = 70.0;
-	day[i]->prev = NULL;
+		int id = 0;
+		for (int i = 0; i < 7; i++) {
+			day[i] = malloc(sizeof(cycle_t));
+			day[i]->id = id++;
+			day[i]->start_hour = 12;
+			day[i]->start_min = 0;
+			day[i]->temp_F = 70.0;
+			day[i]->prev = NULL;
 
-	push_end(day[i], id++, 20, 30, 60.0);
-	push_end(day[i], id++, 17, 30, 70.0);
-	push_end(day[i], id++, 10, 0, 60.0);
-	push_end(day[i], id++, 8, 30, 65.0);
-	push_end(day[i], id++, 0, 0, 60.0);
-
-	i++;
-	// Tuesday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 20;
-	day[i]->start_min = 0;
-	day[i]->temp_F = 72.0;
-	day[i]->prev = NULL;
-
-	push_end(day[i], id++, 18, 5, 60.0);
-	push_end(day[i], id++, 12, 0, 70.0);
-	push_end(day[i], id++, 0, 0, 60.0);
-
-	i++;
-	// Wednesday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 18;
-	day[i]->start_min = 45;
-	day[i]->temp_F = 72.0;
-	day[i]->prev = NULL;
-
-	push_end(day[i], id++, 8, 30, 60.0);
-	push_end(day[i], id++, 7, 10, 70.0);
-	push_end(day[i], id++, 0, 0, 60.0);
-
-	i++;
-	// Thursday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 20;
-	day[i]->start_min = 0;
-	day[i]->temp_F = 72.0;
-	day[i]->prev = NULL;
-
-	push_end(day[i], id++, 18, 5, 60.0);
-	push_end(day[i], id++, 12, 0, 70.0);
-	push_end(day[i], id++, 0, 0, 60.0);
-
-	i++;
-	// Friday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 22;
-	day[i]->start_min = 0;
-	day[i]->temp_F = 72.0;
-	day[i]->prev = NULL;
-
-	push_end(day[i], id++, 20, 0, 60.0);
-	push_end(day[i], id++, 16, 0, 72.0);
-	push_end(day[i], id++, 8, 30, 60.0);
-	push_end(day[i], id++, 7, 10, 70.0);
-	push_end(day[i], id++, 0, 0, 60.0);
-
-	i++;
-	// Saturday
-	day[i] = malloc(sizeof(cycle_t));
-	day[i]->id = id++;
-	day[i]->start_hour = 20;
-	day[i]->start_min = 0;
-	day[i]->temp_F = 72.0;
-	day[i]->prev = NULL;
-
-	push_end(day[i], id++, 18, 0, 60.0);
-	push_end(day[i], id++, 14, 5, 72.0);
-	push_end(day[i], id++, 11, 30, 60.0);
-	push_end(day[i], id++, 8, 30, 70.0);
-	push_end(day[i], id++, 0, 0, 60.0);
-
+			push_end(day[i], id++, 0, 0, 60.0);
+		}
+	}
+	Log_Debug("Server status: %d\n", serverRunning);
 	for (int i = 0; i < 7; i++) {
 		Log_Debug("-==- %d\n", i);
 		print_list(day[i]);
-
 	}
 	userSettings_ptr->currentCycle = day[0];
 	cycleExpired(userSettings_ptr);
@@ -139,3 +59,29 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
 	}
 	return false;
 }
+
+bool checkServerForScheduleUpdates() {
+	Log_Debug("Checking for updated Day IDs\n");
+	int* serverIDs[7];
+	if (getDayIDs(serverIDs)) {
+		for (int i = 0; i < 7; i++) {
+			if (serverIDs[i] != dayIDs[i]) {
+				Log_Debug("Getting day:%d\n\tServer ID: %d, Local ID: %d", i, serverIDs[i], dayIDs[i]);
+
+				while (remove_last(day[i])>0);
+				day[i] = malloc(sizeof(cycle_t));
+				day[i]->id = -1;
+				day[i]->next = NULL;
+				day[i]->prev = NULL;
+				getCycleData(i, day[i]);
+
+				dayIDs[i] = serverIDs[i];
+				print_list(day[i]);
+			}
+		}
+		return true;
+	}
+	else {
+		return false;
+	}
+};

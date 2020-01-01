@@ -21,6 +21,6 @@ void push_start(cycle_t ** head, int hr, int min, float f);
 
 void pop(cycle_t ** head);
 
-void remove_last(cycle_t * head);
+int remove_last(cycle_t * head);
 
 void remove_by_index(cycle_t ** head, int n);

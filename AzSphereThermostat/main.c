@@ -28,6 +28,7 @@ static int epollFd = -1;
 static int buttonPollTimerFd = -1;
 static int sensorPollTimerFd = -1;
 static int motionPollTimerFd = -1;
+static int schedulePollTimerFd = -1;
 
 struct HDC1080 *HDC1080_sensor_ptr;
 struct thermostatSettings *userSettings_ptr;
@@ -180,7 +181,6 @@ static void ButtonTimerEventHandler(EventData *eventData)
 		}
 		else {
 			Log_Debug("Button B released!\n");
-
 		}
 
 		// Update the static variable to use next time we enter this routine
@@ -212,10 +212,18 @@ static void MotionTimerEventHandler(EventData *eventData) {
 	motionTimer(userSettings_ptr->screenTimeoutSec);
 }
 
+static void ScheduleServerCheckEventHandler(EventData *eventData) {
+	if (ConsumeTimerFdEvent(schedulePollTimerFd) != 0) {
+		return;
+	}
+	checkServerForScheduleUpdates();
+}
+
 // event handler data structures. Only the event handler field needs to be populated.
 static EventData buttonEventData = { .eventHandler = &ButtonTimerEventHandler };
 static EventData sensorEventData = { .eventHandler = &SensorTimerEventHandler };
 static EventData motionEventData = { .eventHandler = &MotionTimerEventHandler };
+static EventData scheduleEventData = { .eventHandler = &ScheduleServerCheckEventHandler };
 
 static int initGPIO()
 {
@@ -314,6 +322,15 @@ static int initTimerEventHandlers() {
 		Log_Debug("Failed to create timer\n");
 		return -1;
 	}
+
+	struct timespec scheduleUpdatePeriod = { 600,0 };
+	schedulePollTimerFd =
+		CreateTimerFdAndAddToEpoll(epollFd, &scheduleUpdatePeriod, &scheduleEventData, EPOLLIN);
+	if (sensorPollTimerFd < 0) {
+		Log_Debug("Failed to create timer\n");
+		return -1;
+	}
+	
 }
 
 /// <summary>
@@ -371,7 +388,7 @@ int main(void)
 	update_oled();
 
 	const struct timespec sleepTime = { 30, 0 }; // 30 s
-	nanosleep(&sleepTime, NULL); // Wait for RTC to initialize with the correct date and time
+	//nanosleep(&sleepTime, NULL); // Wait for RTC to initialize with the correct date and time
 	initCycle(&userSettings);
 	initTimerEventHandlers();
 	
