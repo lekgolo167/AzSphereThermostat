@@ -26,18 +26,28 @@ cycle_t* findNextCycle(cycle_t * head, int hour, int min) {
 // add item to the end of the list
 void push_end(cycle_t * head, int id, int hr, int min, float f) {
 	
-	cycle_t * current = head;
-	while (current->next != NULL) {
-		current = current->next;
+	if (head->id != -1) {
+		cycle_t * current = head;
+		while (current->next != NULL) {
+			current = current->next;
+		}
+		/* now we can add a new variable */
+		current->next = malloc(sizeof(cycle_t));
+		current->next->id = id;
+		current->next->start_hour = hr;
+		current->next->start_min = min;
+		current->next->temp_F = f;
+		current->next->next = NULL;
+		current->next->prev = current;
 	}
-	/* now we can add a new variable */
-	current->next = malloc(sizeof(cycle_t));
-	current->next->id = id;
-	current->next->start_hour = hr;
-	current->next->start_min = min;
-	current->next->temp_F = f;
-	current->next->next = NULL;
-	current->next->prev = current;
+	else {
+		head->id = id;
+		head->start_hour = hr;
+		head->start_min = min;
+		head->temp_F = f;
+		head->next = NULL;
+		head->prev = NULL;
+	}
 }
 
 // add item to the begining of the list
@@ -69,12 +79,14 @@ void pop(cycle_t ** head) {
 }
 
 // remove last item
-void remove_last(cycle_t * head) {
-	int retval = 0;
+int remove_last(cycle_t * head) {
+	if (head == NULL)
+		return 0;
 	/* if there is only one item in the list, remove it */
 	if (head->next == NULL) {
 		free(head);
-		return;
+		head = NULL;
+		return 0;
 	}
 
 	/* get to the second to last node in the list */
@@ -86,7 +98,7 @@ void remove_last(cycle_t * head) {
 	/* now current points to the second to last item of the list, so let's remove current->next */
 	free(current->next);
 	current->next = NULL;
-	return;
+	return 1;
 
 }
 

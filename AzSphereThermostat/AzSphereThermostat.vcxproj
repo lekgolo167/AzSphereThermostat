@@ -51,6 +51,7 @@
     <ClCompile Include="msg.c" />
     <ClCompile Include="mt3620.c" />
     <ClCompile Include="oled.c" />
+    <ClCompile Include="parson.c" />
     <ClCompile Include="schedule.c" />
     <ClCompile Include="sd1306.c" />
     <ClCompile Include="thermostat.c" />
@@ -67,6 +68,7 @@
     <ClInclude Include="mt3620.h" />
     <ClInclude Include="mt3620_rdb.h" />
     <ClInclude Include="oled.h" />
+    <ClInclude Include="parson.h" />
     <ClInclude Include="schedule.h" />
     <ClInclude Include="sd1306.h" />
     <ClInclude Include="thermostat.h" />

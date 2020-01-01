@@ -49,6 +49,9 @@
     <ClCompile Include="linkedLIst.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="parson.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HDC1080.h">
@@ -88,6 +91,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="linkedList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parson.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
