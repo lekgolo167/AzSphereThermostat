@@ -18,7 +18,7 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 		day[i] = NULL;
 	}
 
-	bool serverRunning = checkServerForScheduleUpdates();
+	bool serverRunning = checkServerForScheduleUpdates(userSettings_ptr);
 	if (!serverRunning) {
 
 		int id = 0;
@@ -32,14 +32,15 @@ void initCycle(struct thermostatSettings *userSettings_ptr) {
 
 			push_end(day[i], id++, 0, 0, 60.0);
 		}
+		userSettings_ptr->currentCycle = day[0];
+		cycleExpired(userSettings_ptr);
 	}
 	Log_Debug("Server status: %d\n", serverRunning);
 	for (int i = 0; i < 7; i++) {
 		Log_Debug("-==- %d\n", i);
 		print_list(day[i]);
 	}
-	userSettings_ptr->currentCycle = day[0];
-	cycleExpired(userSettings_ptr);
+	
 }
 
 bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
@@ -60,7 +61,7 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
 	return false;
 }
 
-bool checkServerForScheduleUpdates() {
+bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) {
 	Log_Debug("Checking for updated Day IDs\n");
 	int* serverIDs[7];
 	if (getDayIDs(serverIDs)) {
@@ -77,6 +78,18 @@ bool checkServerForScheduleUpdates() {
 
 				dayIDs[i] = serverIDs[i];
 				print_list(day[i]);
+			}
+			if (userSettings_ptr->currentCycle == NULL) {
+				struct timespec currentTime;
+				clock_gettime(CLOCK_REALTIME, &currentTime);
+				struct tm * now = localtime(&currentTime.tv_sec);
+
+				cycle_t* loadedCycle = findNextCycle(day[now->tm_wday], now->tm_hour, now->tm_min);
+				if (loadedCycle != NULL) {
+					userSettings_ptr->currentCycle = loadedCycle;
+					userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
+
+				}
 			}
 		}
 		return true;

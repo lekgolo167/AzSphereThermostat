@@ -216,7 +216,7 @@ static void ScheduleServerCheckEventHandler(EventData *eventData) {
 	if (ConsumeTimerFdEvent(schedulePollTimerFd) != 0) {
 		return;
 	}
-	checkServerForScheduleUpdates();
+	checkServerForScheduleUpdates(userSettings_ptr);
 }
 
 // event handler data structures. Only the event handler field needs to be populated.
