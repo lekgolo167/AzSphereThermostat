@@ -20,4 +20,4 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr);
 /// </summary>
 void initCycle(struct thermostatSettings *userSettings_ptr);
 
-bool checkServerForScheduleUpdates();
+bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr);
