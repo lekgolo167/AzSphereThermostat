@@ -29,16 +29,15 @@ void motionTimer(unsigned int screenTimeout) {
 	//Log_Debug("Interval: %d\n", interval);
 	if (interval > screenTimeout && oledScreenON) {
 
-		char path[] = "192.168.0.27:1880/motion";
-		char buffer[] = "MOTION=1\0";
-		sendCURL(path, buffer);
+		sprintf(CURLMessageBuffer, "MOTION=%d\0", 1);
+		sendCURL(URL_MOTION, CURLMessageBuffer);
 
 		oledScreenON = false;
 		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
 		nanosleep(&sleepTime, NULL);
 
-		buffer[7] = '0';
-		sendCURL(path, buffer);
+		sprintf(CURLMessageBuffer, "MOTION=%d\0", 0);
+		sendCURL(URL_MOTION, CURLMessageBuffer);
 
 		clear_oled_buffer();
 		sd1306_refresh();
@@ -46,16 +45,15 @@ void motionTimer(unsigned int screenTimeout) {
 	}
 	else if (interval < screenTimeout && !oledScreenON) {
 
-		char path[] = "192.168.0.27:1880/motion";
-		char buffer[] = "MOTION=0\0";
-		sendCURL(path, buffer);
+		sprintf(CURLMessageBuffer, "MOTION=%d\0", 0);
+		sendCURL(URL_MOTION, CURLMessageBuffer);
 
 		oledScreenON = true;
 		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
 		nanosleep(&sleepTime, NULL);
 
-		buffer[7] = '1';
-		sendCURL(path, buffer);
+		sprintf(CURLMessageBuffer, "MOTION=%d\0", 1);
+		sendCURL(URL_MOTION, CURLMessageBuffer);
 
 		update_oled();
 		Log_Debug("OLED ON\n");

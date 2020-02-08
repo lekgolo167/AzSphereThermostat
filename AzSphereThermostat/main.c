@@ -33,6 +33,9 @@ static int schedulePollTimerFd = -1;
 struct HDC1080 *HDC1080_sensor_ptr;
 struct thermostatSettings *userSettings_ptr;
 
+/// <summary>
+///     Handle how the ISU2 I2C is setup for the connected devices
+/// </summary>
 static int initI2C(void) {
 
 	ISU_2_Fd = I2CMaster_Open(MT3620_ISU2_I2C);
@@ -41,6 +44,7 @@ static int initI2C(void) {
 		return -1;
 	}
 
+	// Set the bus speed, too slow and the OLED will take too much time to update
 	int result = I2CMaster_SetBusSpeed(ISU_2_Fd, I2C_BUS_SPEED_FAST);
 	if (result != 0) {
 		Log_Debug("ERROR: I2CMaster_SetBusSpeed: errno=%d (%s)\n", errno, strerror(errno));
@@ -57,25 +61,54 @@ static int initI2C(void) {
 }
 
 /// <summary>
-///     Handle button timer event: if the button is pressed, report the event to the IoT Hub.
+///     Handler for the rotary encoder input and buttons A and B
 /// </summary>
 static void ButtonTimerEventHandler(EventData *eventData)
 {
 	if (ConsumeTimerFdEvent(buttonPollTimerFd) != 0) {
 		return;
 	}
+
+	// Get the RTC to update the screen timeout, if buttons are being pressed the screen should stay on 
 	struct timespec currentTime;
 	clock_gettime(CLOCK_REALTIME, &currentTime);
-	//
-	///////////////		Rotary Encoder		/////////////////////
-	int result = GPIO_GetValue(rotary_A_Fd, &rotary_A_State);
-	static bool docount = true;
-	if (rotary_A_State != rotary_A_LastState) { // This if statment checks which way the knob is turning
-		result = GPIO_GetValue(rotary_B_Fd, &rotary_B_State);
-		if (docount) { // Each time the knob is turned it counts 2 movments so we need to only check every other time
-			if (rotary_B_State != rotary_A_State) {
-				lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
 
+	//
+	///////////////		ROTARY ENCODER CHECK START		/////////////////////
+
+	// Read the rotary encoder A input
+	GPIO_Value_Type rotary_A_State = GPIO_Value_High;
+	int result = GPIO_GetValue(rotary_A_Fd, &rotary_A_State);
+	if (result != 0) {
+		Log_Debug("ERROR: Could not read button GPIO: %s (%d).\n", strerror(errno), errno);
+		return;
+	}
+
+	// Bool used for counting every other turn of the rotary encoder, this way the menu moves one item per 'click' of the rotary encoder as it turns
+	static bool docount = true;
+
+	// if the previous state is not equal to the current state, the knob is turning
+	if (rotary_A_State != rotary_A_LastState) {
+
+		// Read the rotary encoder B input
+		GPIO_Value_Type rotary_B_State = GPIO_Value_High;
+		result = GPIO_GetValue(rotary_B_Fd, &rotary_B_State);
+		if (result != 0) {
+			Log_Debug("ERROR: Could not read button GPIO: %s (%d).\n", strerror(errno), errno);
+			return;
+		}
+
+		// Each time the knob is turned it counts 2 movments so we need to only check every other time
+		if (docount) {
+
+			// This if statment checks which way the knob is turning
+			// If A leads B it's CW, if B leads A it's CCW
+			if (rotary_B_State != rotary_A_State) {
+
+				// Keep screen on while user interacts by updating a time stamp
+				lastMotionDetectedTimeStamp = currentTime.tv_sec; 
+
+				// If in edit mode, keep the scoll counter where it is at and adjust the temporary setting varable shown on the OLED instead
 				if (edit_oled_menu) {
 					temporary_setting++;
 					Log_Debug("Temp: %d\n", temporary_setting);
@@ -95,30 +128,38 @@ static void ButtonTimerEventHandler(EventData *eventData)
 					Log_Debug("Counter: %d\n", oled_scroll_counter);
 				}
 			}
+			// Represh the OLED
 			update_oled();	
 		}
-		docount = !docount; // toggle so we count every other one
+		docount = !docount; // Toggle so we count every other one
 	}
+	// Update the state of the rotary encoder
 	rotary_A_LastState = rotary_A_State;
 
 	// Check the state of the rotary button/switch; it's active LOW
+	GPIO_Value_Type rotary_SW_State = GPIO_Value_High;
 	result = GPIO_GetValue(rotary_SW_Fd, &rotary_SW_State);
+	if (result != 0) {
+		Log_Debug("ERROR: Could not read button GPIO: %s (%d).\n", strerror(errno), errno);
+		return;
+	}
+
 	if (rotary_SW_LastState != rotary_SW_State) {
 
-		lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
+		lastMotionDetectedTimeStamp = currentTime.tv_sec; // Keep screen on while user interacts
 
 		rotary_SW_LastState = rotary_SW_State;
 		Log_Debug("SW: %d\n", rotary_SW_State);
 
-		if (rotary_SW_State == GPIO_Value_Low) { // if button pressed, edit is true, if pressed again edit is false
+		if (rotary_SW_State == GPIO_Value_Low) { // If button pressed, edit is true, if pressed again edit is false
 			edit_oled_menu = !edit_oled_menu;
 			Log_Debug("Edit mode: %d\n", edit_oled_menu);
-			// if not editing set the temporary to the corrisponding var
+			// If not editing set the temporary to the corrisponding var
 			if (edit_oled_menu == false)
 			{
 				updateUserSettings();
 			}
-			else {
+			else { // If editing, get the corrisponding variable and copy it to a temporary variable
 				Log_Debug("temp before: %d\n", temporary_setting);
 				updateTemporarySettingValue();
 				Log_Debug("temp after: %d\n", temporary_setting);
@@ -128,9 +169,11 @@ static void ButtonTimerEventHandler(EventData *eventData)
 	}
 	//////////////////	END ROTARY ENCODER	////////////////////
 
+	//////////////////	START BUTTON CHECK	////////////////////
+
 	// Check for button A press
-	GPIO_Value_Type newButtonAState;
-	result = GPIO_GetValue(buttonAGpioFd, &newButtonAState);
+	GPIO_Value_Type currentBtnAState;
+	result = GPIO_GetValue(buttonAGpioFd, &currentBtnAState);
 	if (result != 0) {
 		Log_Debug("ERROR: Could not read button GPIO: %s (%d).\n", strerror(errno), errno);
 		return;
@@ -138,28 +181,28 @@ static void ButtonTimerEventHandler(EventData *eventData)
 
 	// If the A button has just been pressed, send a telemetry message
 	// The button has GPIO_Value_Low when pressed and GPIO_Value_High when released
-	if (newButtonAState != buttonAState) {
+	if (currentBtnAState != lastBtnAState) {
 
 		lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
 
-		if (newButtonAState == GPIO_Value_Low) {
-			Log_Debug("Button A pressed!\n");
+		// Pressed, not released
+		if (currentBtnAState == GPIO_Value_Low) {
+			// Change to the next menu
 			oled_menu_state++;
+			// reset scroll counter so it starts at the top and not where it was before
 			oled_scroll_counter = 0;
 			Log_Debug("OLED state: %d\n", oled_menu_state);
+			// Update OLED to show new menu
 			update_oled();
-		}
-		else {
-			Log_Debug("Button A released!\n");
 		}
 
 		// Update the static variable to use next time we enter this routine
-		buttonAState = newButtonAState;
+		lastBtnAState = currentBtnAState;
 	}
 
 	// Check for button B press
-	GPIO_Value_Type newButtonBState;
-	result = GPIO_GetValue(buttonBGpioFd, &newButtonBState);
+	GPIO_Value_Type currentBtnBState;
+	result = GPIO_GetValue(buttonBGpioFd, &currentBtnBState);
 	if (result != 0) {
 		Log_Debug("ERROR: Could not read button GPIO: %s (%d).\n", strerror(errno), errno);
 		return;
@@ -167,44 +210,46 @@ static void ButtonTimerEventHandler(EventData *eventData)
 
 	// If the B button has just been pressed/released, send a telemetry message
 	// The button has GPIO_Value_Low when pressed and GPIO_Value_High when released
-	if (newButtonBState != buttonBState) {
+	if (currentBtnBState != lastBtnBState) {
 
 		lastMotionDetectedTimeStamp = currentTime.tv_sec; // keep screen on while user interacts
 
-		if (newButtonBState == GPIO_Value_Low) {
-			// Send Telemetry here
-			Log_Debug("Button B pressed!\n");
+		// Pressed, not released
+		if (currentBtnBState == GPIO_Value_Low) {
+			// Change to the previous menu
 			oled_menu_state--;
+			// reset scroll counter so it starts at the top and not where it was before
 			oled_scroll_counter = 0;
 			Log_Debug("OLDED state: %d\n", oled_menu_state);
-			update_oled();			//// OLED
-		}
-		else {
-			Log_Debug("Button B released!\n");
+			// Update OLED to show new menu
+			update_oled();
 		}
 
 		// Update the static variable to use next time we enter this routine
-		buttonBState = newButtonBState;
-
-
+		lastBtnBState = currentBtnBState;
 	}
-	
 }
 
+/// <summary>
+///     Handler for sensor timer to read temperature and humidity then update the OLED with optional CURL to server
+/// </summary>
 static void SensorTimerEventHandler(EventData *eventData) {
 	if (ConsumeTimerFdEvent(sensorPollTimerFd) != 0) {
 		return;
 	}
+	// Get the temperature and 
 	sampleTemperature();
 	update_oled();
+	
+	sprintf(CURLMessageBuffer, "TEMP=%f&HUM=%f\0", HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity);
+	sendCURL(URL_TEMPERATURE, CURLMessageBuffer);
 
-	char path[] = "192.168.0.27:1880/temp";
-	char buffer[50];
-	sprintf(buffer, "TEMP=%f&HUM=%f\0", HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity);
-	sendCURL(path, buffer);
 	Log_Debug("Checked Sensors\n");
 }
 
+/// <summary>
+///     Handler for motion timer to read motion sensor
+/// </summary>
 static void MotionTimerEventHandler(EventData *eventData) {
 	if (ConsumeTimerFdEvent(motionPollTimerFd) != 0) {
 		return;
@@ -212,6 +257,9 @@ static void MotionTimerEventHandler(EventData *eventData) {
 	motionTimer(userSettings_ptr->screenTimeoutSec);
 }
 
+/// <summary>
+///     Handler for schedule update check timer to update the scheudle from the server
+/// </summary>
 static void ScheduleServerCheckEventHandler(EventData *eventData) {
 	if (ConsumeTimerFdEvent(schedulePollTimerFd) != 0) {
 		return;
@@ -225,6 +273,9 @@ static EventData sensorEventData = { .eventHandler = &SensorTimerEventHandler };
 static EventData motionEventData = { .eventHandler = &MotionTimerEventHandler };
 static EventData scheduleEventData = { .eventHandler = &ScheduleServerCheckEventHandler };
 
+/// <summary>
+///     Sets up all the GPIO inputs/outputs for the device
+/// </summary>
 static int initGPIO()
 {
 	
@@ -287,6 +338,9 @@ static int initGPIO()
 	return 0;
 };
 
+/// <summary>
+///     Update the sensor timer if it has been reconfigured
+/// </summary>
 static int reconfigureSensorEpollTimer() {
 	UnregisterEventHandlerFromEpoll(epollFd, sensorPollTimerFd);
 	sensorPollTimerFd =
@@ -297,6 +351,9 @@ static int reconfigureSensorEpollTimer() {
 	}
 };
 
+/// <summary>
+///     Initializes all of the timer event handlers
+/// </summary>
 static int initTimerEventHandlers() {
 	epollFd = CreateEpollFd();
 	if (epollFd < 0) {
@@ -387,11 +444,10 @@ int main(void)
 	
 	update_oled();
 
-	const struct timespec sleepTime = { 30, 0 }; // 30 s
+	//const struct timespec sleepTime = { 30, 0 }; // 30 s
 	//nanosleep(&sleepTime, NULL); // Wait for RTC to initialize with the correct date and time
 	initCycle(&userSettings);
 	initTimerEventHandlers();
-	
 	
     while (true) {
 
