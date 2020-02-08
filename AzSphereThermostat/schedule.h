@@ -20,4 +20,7 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr);
 /// </summary>
 void initCycle(struct thermostatSettings *userSettings_ptr);
 
+/// <summary>
+///     Check the server and see if local schedule IDs match the local IDs, if they don't, download the new schedule
+/// </summary>
 bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr);

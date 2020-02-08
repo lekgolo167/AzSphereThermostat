@@ -17,9 +17,6 @@ extern int rotary_A_Fd;
 extern int rotary_B_Fd;
 extern int rotary_SW_Fd;
 
-extern GPIO_Value_Type rotary_A_State;
-extern GPIO_Value_Type rotary_B_State;
-extern GPIO_Value_Type rotary_SW_State;
 extern GPIO_Value_Type rotary_A_LastState;
 extern GPIO_Value_Type rotary_B_LastState;
 extern GPIO_Value_Type rotary_SW_LastState;
@@ -27,8 +24,8 @@ extern GPIO_Value_Type rotary_SW_LastState;
 extern int buttonAGpioFd;
 extern int buttonBGpioFd;
 
-extern GPIO_Value_Type buttonAState;
-extern GPIO_Value_Type buttonBState;
+extern GPIO_Value_Type lastBtnAState;
+extern GPIO_Value_Type lastBtnBState;
 
 extern int8_t oled_scroll_counter;
 extern int8_t oled_menu_state;
@@ -39,9 +36,23 @@ extern bool oledScreenON;
 
 extern bool reconfigureTimer;
 
+extern bool CURL_enabled;
+
 extern long lastMotionDetectedTimeStamp;
 extern long furnaceStartTime;
 extern long furnaceRunTime;
+
+// global char buffer for curl messages
+char* CURLMessageBuffer[128];
+
+// IP address of server
+#define IP_ADDRESS_AND_PORT "192.168.0.27:1880"
+
+#define URL_TEMPERATURE IP_ADDRESS_AND_PORT "/temp"
+#define URL_STATS IP_ADDRESS_AND_PORT "/stats"
+#define URL_MOTION IP_ADDRESS_AND_PORT "/motion"
+#define URL_RUNTIME IP_ADDRESS_AND_PORT "/runtime"
+#define URL_FURNANCE_STATE IP_ADDRESS_AND_PORT "/furnaceState"
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

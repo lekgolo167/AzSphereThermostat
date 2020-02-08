@@ -99,7 +99,6 @@ void furnaceRelay(bool powerON)
 	Log_Debug("RELAY STATE %d, POWER %d\n", relayON, powerON);
 	if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
 	{
-		// TODO calculate runtime
 		struct timespec currentTime;
 		clock_gettime(CLOCK_REALTIME, &currentTime);
 		if (powerON) {
@@ -109,10 +108,8 @@ void furnaceRelay(bool powerON)
 			furnaceRunTime = currentTime.tv_sec - furnaceStartTime;
 			Log_Debug("RUNTIME: %d\n", furnaceRunTime);
 
-			char path[] = "192.168.0.27:1880/runtime";
-			char buffer[50];
-			sprintf(buffer, "RUNTIME=%d\0", furnaceRunTime);
-			sendCURL(path, buffer);
+			sprintf(CURLMessageBuffer, "RUNTIME=%d\0", furnaceRunTime);
+			sendCURL(URL_RUNTIME, CURLMessageBuffer);
 		}
 		Log_Debug("[INFO:] In furnaceRelay\n");
 		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
@@ -120,12 +117,12 @@ void furnaceRelay(bool powerON)
 		nanosleep(&sleepTime, NULL);
 		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
 
-		char path[] = "192.168.0.27:1880/furnaceState";
-		char buffer[50];
-		sprintf(buffer, "F_State=%d\0", relayON);
-		sendCURL(path, buffer);
+		sprintf(CURLMessageBuffer, "F_State=%d\0", relayON);
+		sendCURL(URL_FURNANCE_STATE, CURLMessageBuffer);
+
 		nanosleep(&sleepTime, NULL);
-		sprintf(buffer, "F_State=%d\0", powerON);
-		sendCURL(path, buffer);
+
+		sprintf(CURLMessageBuffer, "F_State=%d\0", powerON);
+		sendCURL(URL_FURNANCE_STATE, CURLMessageBuffer);
 	}
 };
