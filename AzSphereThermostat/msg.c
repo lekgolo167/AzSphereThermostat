@@ -50,9 +50,8 @@ bool getDayIDs(int* idArr) {
 			Log_Debug("%s:, ID:%d\n", dates[i], (int)json_object_get_number(days, dates[i]));
 			idArr[i] = (int)json_object_get_number(days, dates[i]);
 		}
-
+		json_value_free(raw);
 		free(s.ptr);
-
 		curl_easy_cleanup(curl);
 		return true;
 	}
@@ -99,7 +98,7 @@ void getCycleData(int day, cycle_t * cycles_ptr) {
 				(int)json_object_get_number(cycle, "m"),
 				(float)json_object_get_number(cycle, "t"));
 		}
-
+		json_value_free(raw);
 		free(s.ptr);
 
 	}
