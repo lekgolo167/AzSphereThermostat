@@ -22,6 +22,7 @@ void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 
 	for (int i = 0; i < 20; i++) {
 		temperatureSamples[i] = HDC1080_sensor_ptr->temp_F;
 	}
+	averageTemp_F = temperatureSamples[0];
 };
 
 void runCycle(float roomTemp_F)

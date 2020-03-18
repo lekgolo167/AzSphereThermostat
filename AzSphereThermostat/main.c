@@ -241,7 +241,7 @@ static void SensorTimerEventHandler(EventData *eventData) {
 	sampleTemperature();
 	update_oled();
 	
-	sprintf(CURLMessageBuffer, "TEMP=%f&HUM=%f\0", HDC1080_sensor_ptr->temp_F, HDC1080_sensor_ptr->humidity);
+	sprintf(CURLMessageBuffer, "TEMP=%f&HUM=%f\0", averageTemp_F, HDC1080_sensor_ptr->humidity);
 	sendCURL(URL_TEMPERATURE, CURLMessageBuffer);
 
 	Log_Debug("Checked Sensors\n");
@@ -432,7 +432,7 @@ int main(void)
 	userSettings_ptr = &userSettings;
 	HDC1080_sensor_ptr = &HDC1080_sensor;
 
-	setenv("TZ", "UTC+8MT", 1);
+	setenv("TZ", "MST+7MDT", 1);
 	tzset();
 	PrintTime();
 
@@ -444,8 +444,6 @@ int main(void)
 	
 	update_oled();
 
-	//const struct timespec sleepTime = { 30, 0 }; // 30 s
-	//nanosleep(&sleepTime, NULL); // Wait for RTC to initialize with the correct date and time
 	initCycle(&userSettings);
 	initTimerEventHandlers();
 	
