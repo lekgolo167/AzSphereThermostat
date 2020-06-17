@@ -8,7 +8,7 @@ extern uint8_t lsm6dso_status;
 extern uint8_t lps22hh_status;
 
 int8_t line_selection[] = { -20, OLED_LINE_1_Y,OLED_LINE_2_Y ,OLED_LINE_3_Y ,OLED_LINE_4_Y };
-enum menu_items { TARGET, THRESHOLDLOWER, THRESHOLDUPPER, BASELINE, TOTALSAMPLES, SAMPLEPERIOD, SCREENTIMEOUT, MOTIONDETECTION};
+enum menu_items { TARGET, THRESHOLDLOWER, THRESHOLDUPPER, BASELINE, TOTALSAMPLES, SAMPLEPERIOD, SCREENTIMEOUT, MOTIONDETECTION, SYNCRTC, CHANGEHOUR};
 struct HDC1080* sensor;
 struct thermostatSettings* settings;
 char buffer[25];
@@ -85,6 +85,22 @@ void updateUserSettings()
 		if(temporary_setting >= 6 && temporary_setting <= 96)
 			settings->motionDetectorSec = temporary_setting * 3600; // convert to seconds from hours
 	}
+	case CHANGEHOUR:
+	{
+		if (temporary_setting >= -1 && temporary_setting <= 1) {
+			struct timespec currentTime;
+			if (clock_gettime(CLOCK_REALTIME, &currentTime) == -1) {
+				Log_Debug("ERROR: clock_gettime failed with error code: %s (%d).\n", strerror(errno),errno);
+				return;
+			}
+			currentTime.tv_sec += 3600 * temporary_setting;
+			if (clock_settime(CLOCK_REALTIME, &currentTime) == -1) {
+				Log_Debug("ERROR: clock_settime failed with error code: %s (%d).\n", strerror(errno),errno);
+				return;
+			}
+			Log_Debug("+/- one hour from system time: %d\n", temporary_setting * 3600);
+		}
+	}
 	break;
 	default:
 		break;
@@ -134,6 +150,21 @@ void updateTemporarySettingValue()
 	case MOTIONDETECTION:
 	{
 		temporary_setting = settings->motionDetectorSec/3600; // convert from seconds to hours
+	}
+	break;
+	case CHANGEHOUR:
+	{
+		temporary_setting = 0;
+	}
+	break;
+	case SYNCRTC:
+	{
+		if (clock_systohc() == -1) {
+			Log_Debug("ERROR: clock_systohc failed with error code: %s (%d).\n", strerror(errno),errno);
+			return;
+		}
+		edit_oled_menu = false;
+		Log_Debug("Synchronized system time to the RTC\n");
 	}
 	break;
 	default:
@@ -562,6 +593,9 @@ void displayCycle()
 }
 
 void displayDateAndTime() {
+
+	int8_t items[] = { -1, -1,SYNCRTC, CHANGEHOUR };
+
 	struct timespec currentTime;
 	if (clock_gettime(CLOCK_REALTIME, &currentTime) == -1) {
 		Log_Debug("ERROR: clock_gettime failed with error code: %s (%d).\n", strerror(errno),
@@ -585,6 +619,27 @@ void displayDateAndTime() {
 
 	// Draw date at line 1
 	sd1306_draw_string(OLED_LINE_1_X, OLED_LINE_1_Y, displayTimeBuffer, FONT_SIZE_LINE, white_pixel);
+
+	// Draw sync option on line 2
+	sd1306_draw_string(OLED_LINE_2_X, OLED_LINE_2_Y, "Sync RTC Time  'OK'", FONT_SIZE_LINE, white_pixel);
+
+	// Switch between edited value and set value
+	if (edit_oled_menu && oled_menu_item == CHANGEHOUR) {
+		sprintf(buffer, "Hour set +/-: %d hr\0", temporary_setting);
+	}
+	else {
+		// Also, covnert seconds to hours
+		sprintf(buffer, "Hour set +/-: %d hr\0", 0);
+	}
+
+	// Draw sync option on line 2
+	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y,  buffer, FONT_SIZE_LINE, white_pixel);
+
+	// Confine the scroll line of the menu
+	boundScrollCounter(2, 3, 9);
+
+	// Save which item we are editing
+	oled_menu_item = items[oled_scroll_counter];
 
 	// Send the buffer to OLED RAM
 	sd1306_refresh();
