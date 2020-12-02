@@ -88,17 +88,11 @@ void updateUserSettings()
 	case CHANGEHOUR:
 	{
 		if (temporary_setting >= -1 && temporary_setting <= 1) {
-			struct timespec currentTime;
-			if (clock_gettime(CLOCK_REALTIME, &currentTime) == -1) {
-				Log_Debug("ERROR: clock_gettime failed with error code: %s (%d).\n", strerror(errno),errno);
-				return;
-			}
-			currentTime.tv_sec += 3600 * temporary_setting;
-			if (clock_settime(CLOCK_REALTIME, &currentTime) == -1) {
-				Log_Debug("ERROR: clock_settime failed with error code: %s (%d).\n", strerror(errno),errno);
-				return;
-			}
-			Log_Debug("+/- one hour from system time: %d\n", temporary_setting * 3600);
+
+			char* timezone_name = getenv("TZ");
+			timezone_name[4] += temporary_setting;
+			setenv("TZ", timezone_name, 1);
+			Log_Debug("Timezone name: %s", timezone_name);
 		}
 	}
 	break;
@@ -634,6 +628,11 @@ void displayDateAndTime() {
 
 	// Draw sync option on line 2
 	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_3_Y,  buffer, FONT_SIZE_LINE, white_pixel);
+
+	// Draw timezone name
+	char* timezone_name = getenv("TZ");
+	sd1306_draw_string(OLED_LINE_3_X, OLED_LINE_4_Y, timezone_name, FONT_SIZE_LINE, white_pixel);
+
 
 	// Confine the scroll line of the menu
 	boundScrollCounter(2, 3, 9);

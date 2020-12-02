@@ -6,6 +6,7 @@ struct HDC1080 *HDC1080_sensor;
 
 float temperatureSamples[20] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 int sampleAverageIndex = 0;
+bool relayON;
 
 void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr)
 {
@@ -23,6 +24,7 @@ void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 
 		temperatureSamples[i] = HDC1080_sensor_ptr->temp_F;
 	}
 	averageTemp_F = temperatureSamples[0];
+	relayON = false;
 };
 
 void runCycle(float roomTemp_F)
@@ -95,28 +97,27 @@ bool preRunChecklist()
 
 void furnaceRelay(bool powerON)
 {
-	bool relayON;
-	int result = GPIO_GetValue(furnaceRelayStateFd, &relayON);
 	Log_Debug("RELAY STATE %d, POWER %d\n", relayON, powerON);
+
 	if ((powerON != relayON)) // if the furnace state matches the desired state, don't toggle the relay
 	{
 		struct timespec currentTime;
 		clock_gettime(CLOCK_REALTIME, &currentTime);
 		if (powerON) {
+			Log_Debug("[INFO:] Furnace Enabled\n");
 			furnaceStartTime = currentTime.tv_sec;
+			GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
+
 		}
 		else {
 			furnaceRunTime = currentTime.tv_sec - furnaceStartTime;
 			Log_Debug("RUNTIME: %d\n", furnaceRunTime);
-
+			GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
 			sprintf(CURLMessageBuffer, "RUNTIME=%d\0", furnaceRunTime);
 			sendCURL(URL_RUNTIME, CURLMessageBuffer);
 		}
-		Log_Debug("[INFO:] In furnaceRelay\n");
+		
 		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_High);
-		nanosleep(&sleepTime, NULL);
-		GPIO_SetValue(GPIO_relay_Fd, GPIO_Value_Low);
 
 		sprintf(CURLMessageBuffer, "F_State=%d\0", relayON);
 		sendCURL(URL_FURNANCE_STATE, CURLMessageBuffer);
@@ -125,5 +126,8 @@ void furnaceRelay(bool powerON)
 
 		sprintf(CURLMessageBuffer, "F_State=%d\0", powerON);
 		sendCURL(URL_FURNANCE_STATE, CURLMessageBuffer);
+
+		relayON = powerON;
 	}
+
 };

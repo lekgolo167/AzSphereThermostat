@@ -300,13 +300,7 @@ static int initGPIO()
 			strerror(errno), errno);
 		return -1;
 	}
-	furnaceRelayStateFd = GPIO_OpenAsInput(17);
-	if (furnaceRelayStateFd < 0) {
-		Log_Debug(
-			"Error opening GPIO: %s (%d). Check that app_manifest.json includes the GPIO used.\n",
-			strerror(errno), errno);
-		return -1;
-	}
+
 	GPIO_relay_Fd = GPIO_OpenAsOutput(35, GPIO_OutputMode_PushPull, GPIO_Value_Low);
 	if (GPIO_relay_Fd < 0) {
 		Log_Debug(
@@ -432,7 +426,7 @@ int main(void)
 	userSettings_ptr = &userSettings;
 	HDC1080_sensor_ptr = &HDC1080_sensor;
 
-	setenv("TZ", "MST+7MDT", 1);
+	setenv("TZ", "MST+8MDT", 1);
 	tzset();
 	PrintTime();
 
