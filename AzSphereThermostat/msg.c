@@ -41,7 +41,9 @@ bool getDayIDs(int* idArr) {
 
 		res = curl_easy_perform(curl);
 
-		//Log_Debug("%s\n", s.ptr);
+		if (res != CURLE_OK) {
+			return false;
+		}
 
 		JSON_Value* raw = json_parse_string(s.ptr);
 		JSON_Object* days = json_value_get_object(raw);

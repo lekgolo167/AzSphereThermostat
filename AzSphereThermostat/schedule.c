@@ -75,6 +75,9 @@ bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) 
 	Log_Debug("Checking for updated Day IDs\n");
 	// Temporary store for the servers IDs
 	int* serverIDs[7];
+	struct timespec currentTime;
+	clock_gettime(CLOCK_REALTIME, &currentTime);
+	struct tm* now = localtime(&currentTime.tv_sec);
 	if (CURL_enabled && getDayIDs(serverIDs)) { // If server responded
 		for (int i = 0; i < 7; i++) {
 			if (serverIDs[i] != dayIDs[i]) { // Compare IDs one by one, if they dont match delete the current day's scheudle and load in a new one
@@ -82,6 +85,7 @@ bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) 
 
 				// Delete one by one each cycle in the day linked list
 				while (remove_last(day[i])>0);
+				day[i] = NULL;
 				day[i] = malloc(sizeof(cycle_t));
 				day[i]->id = -1;
 				day[i]->next = NULL;
@@ -94,10 +98,9 @@ bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) 
 				print_list(day[i]);
 			}
 			// If the day schedule that we happened to update was the cycle currently running then need to update null pointers that were created by freeing memory
-			if (userSettings_ptr->currentCycle == NULL) {
-				struct timespec currentTime;
-				clock_gettime(CLOCK_REALTIME, &currentTime);
-				struct tm * now = localtime(&currentTime.tv_sec);
+			if (now->tm_wday == i) {
+				Log_Debug("UPDATING CURRENT DAY");
+				
 
 				cycle_t* loadedCycle = findNextCycle(day[now->tm_wday], now->tm_hour, now->tm_min);
 				if (loadedCycle != NULL) {
