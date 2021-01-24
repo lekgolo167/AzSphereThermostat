@@ -25,6 +25,3 @@ bool getDayIDs(int* idArr);
 void getCycleData(int day, cycle_t * cycles);
 
 void sendCURL(char* URLAndPath, char* dataFieldBuffer);
-
-void sendCURLStats(float bt, float bl, float bh, float at, float al, float ah);
-

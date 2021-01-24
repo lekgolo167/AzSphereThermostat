@@ -116,13 +116,6 @@ void furnaceRelay(bool powerON)
 			sprintf(CURLMessageBuffer, "RUNTIME=%d\0", furnaceRunTime);
 			sendCURL(URL_RUNTIME, CURLMessageBuffer);
 		}
-		
-		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-
-		sprintf(CURLMessageBuffer, "F_State=%d\0", relayON);
-		sendCURL(URL_FURNANCE_STATE, CURLMessageBuffer);
-
-		nanosleep(&sleepTime, NULL);
 
 		sprintf(CURLMessageBuffer, "F_State=%d\0", powerON);
 		sendCURL(URL_FURNANCE_STATE, CURLMessageBuffer);

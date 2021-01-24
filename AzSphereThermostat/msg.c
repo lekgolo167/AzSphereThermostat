@@ -164,21 +164,3 @@ cleanupLabel:
 
 	return;
 }
-
-void sendCURLStats(float bt, float bl, float bh, float at, float al, float ah) {
-
-	if (!CURL_enabled) {
-		return;
-	}
-
-	sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", bt, bl, bh);
-	sendCURL(URL_STATS, CURLMessageBuffer);
-
-	const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-	nanosleep(&sleepTime, NULL);
-
-	sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", at, al, ah);
-	sendCURL(URL_STATS, CURLMessageBuffer);
-
-	return;
-}

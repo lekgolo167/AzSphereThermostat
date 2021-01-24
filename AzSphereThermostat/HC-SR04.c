@@ -29,12 +29,7 @@ void motionTimer(unsigned int screenTimeout) {
 	//Log_Debug("Interval: %d\n", interval);
 	if (interval > screenTimeout && oledScreenON) {
 
-		sprintf(CURLMessageBuffer, "MOTION=%d\0", 1);
-		sendCURL(URL_MOTION, CURLMessageBuffer);
-
 		oledScreenON = false;
-		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-		nanosleep(&sleepTime, NULL);
 
 		sprintf(CURLMessageBuffer, "MOTION=%d\0", 0);
 		sendCURL(URL_MOTION, CURLMessageBuffer);
@@ -45,12 +40,7 @@ void motionTimer(unsigned int screenTimeout) {
 	}
 	else if (interval < screenTimeout && !oledScreenON) {
 
-		sprintf(CURLMessageBuffer, "MOTION=%d\0", 0);
-		sendCURL(URL_MOTION, CURLMessageBuffer);
-
 		oledScreenON = true;
-		const struct timespec sleepTime = { 0, 50000000 }; // 50 ms
-		nanosleep(&sleepTime, NULL);
 
 		sprintf(CURLMessageBuffer, "MOTION=%d\0", 1);
 		sendCURL(URL_MOTION, CURLMessageBuffer);
