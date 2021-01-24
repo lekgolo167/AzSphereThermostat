@@ -32,24 +32,27 @@ void updateUserSettings()
 	case TARGET:
 	{
 		if (temporary_setting >= settings->baselineTemp_F && temporary_setting <= 95) {
-			sendCURLStats(settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold, temporary_setting, settings->lower_threshold, settings->upper_threshold);
 			settings->targetTemp_F = temporary_setting;
+			sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold);
+			sendCURL(URL_STATS, CURLMessageBuffer);
 		}
 	}
 	break;
 	case THRESHOLDLOWER:
 	{
 		if (temporary_setting >= 0 && temporary_setting <= 5) {
-			sendCURLStats(settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold, settings->targetTemp_F, temporary_setting, settings->upper_threshold);
 			settings->lower_threshold = temporary_setting;
+			sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold);
+			sendCURL(URL_STATS, CURLMessageBuffer);
 		}
 	}
 	break;
 	case THRESHOLDUPPER:
 	{
 		if (temporary_setting >= 0 && temporary_setting <= 5) {
-			sendCURLStats(settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold, settings->targetTemp_F, settings->lower_threshold, temporary_setting);
 			settings->upper_threshold = temporary_setting;
+			sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold);
+			sendCURL(URL_STATS, CURLMessageBuffer);
 		}
 	}
 	break;

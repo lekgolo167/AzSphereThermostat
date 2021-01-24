@@ -58,15 +58,16 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
 	cycle_t* loadedCycle = findNextCycle(day[now->tm_wday], now->tm_hour, now->tm_min);
 	// If the IDs do not match then the current cycle has expired and a new cycle needs to be loaded in
 	if (loadedCycle->id != userSettings_ptr->currentCycle->id) {
-
-		// Sends data to plot the schedule
-		sendCURLStats(userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold, loadedCycle->temp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
-
+		
 		// Update pointers
 		userSettings_ptr->currentCycle = loadedCycle;
 		userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
 
-		Log_Debug(" -===- loaded cycle is: %d:%d (%.1f F°)\n", loadedCycle->start_hour, loadedCycle->start_min, loadedCycle->temp_F);
+		// Sends data to plot the schedule
+		sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
+		sendCURL(URL_STATS, CURLMessageBuffer);
+
+		Log_Debug(" -===- loaded cycle is: %d:%d (%.1f Fï¿½)\n", loadedCycle->start_hour, loadedCycle->start_min, loadedCycle->temp_F);
 	}
 	return false;
 }
@@ -96,17 +97,22 @@ bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) 
 				// Update the local copy of the server IDs
 				dayIDs[i] = serverIDs[i];
 				print_list(day[i]);
-			}
-			// If the day schedule that we happened to update was the cycle currently running then need to update null pointers that were created by freeing memory
-			if (now->tm_wday == i) {
-				Log_Debug("UPDATING CURRENT DAY");
-				
+			
+				// If the day schedule that we happened to update was the cycle currently running then need to update null pointers that were created by freeing memory
+				if (now->tm_wday == i) {
+					Log_Debug("UPDATING CURRENT DAY");
+					
 
-				cycle_t* loadedCycle = findNextCycle(day[now->tm_wday], now->tm_hour, now->tm_min);
-				if (loadedCycle != NULL) {
-					// Update pointers
-					userSettings_ptr->currentCycle = loadedCycle;
-					userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
+					cycle_t* loadedCycle = findNextCycle(day[now->tm_wday], now->tm_hour, now->tm_min);
+					if (loadedCycle != NULL) {
+						// Update pointers
+						userSettings_ptr->currentCycle = loadedCycle;
+						userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
+					}
+
+					// Sends data to plot the schedule
+					sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
+					sendCURL(URL_STATS, CURLMessageBuffer);
 				}
 			}
 		}
