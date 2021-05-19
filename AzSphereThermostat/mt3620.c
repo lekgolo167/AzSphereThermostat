@@ -266,7 +266,7 @@ int reconfigureSensorEpollTimer() {
 };
 
 int startTemporaryEpollTimer() {
-	struct timespec t = { 600,0 };
+	struct timespec t = { 1800,0 };
 	temporaryPollTimerFd = CreateTimerFdAndAddToEpoll(epollFd, &t, &temporaryEventData, EPOLLIN);
 
 	if (sensorPollTimerFd < 0) {
