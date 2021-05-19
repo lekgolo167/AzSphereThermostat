@@ -24,3 +24,5 @@ void initCycle(struct thermostatSettings *userSettings_ptr);
 ///     Check the server and see if local schedule IDs match the local IDs, if they don't, download the new schedule
 /// </summary>
 bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr);
+
+void stopTemporaryTimer(float orig_temp);

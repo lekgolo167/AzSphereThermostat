@@ -32,7 +32,9 @@ void updateUserSettings()
 	case TARGET:
 	{
 		if (temporary_setting >= settings->baselineTemp_F && temporary_setting <= 95) {
+			settings->temporaryTarget = settings->targetTemp_F;
 			settings->targetTemp_F = temporary_setting;
+			startTemporaryTimer = true;
 			sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", settings->targetTemp_F, settings->lower_threshold, settings->upper_threshold);
 			sendCURL(URL_STATS, CURLMessageBuffer);
 		}

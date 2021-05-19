@@ -46,12 +46,25 @@ bool getDayIDs(int* idArr) {
 		}
 
 		JSON_Value* raw = json_parse_string(s.ptr);
-		JSON_Object* days = json_value_get_object(raw);
+		JSON_Object* obj = json_value_get_object(raw);
+		JSON_Object* dayIDs = json_object_get_object(obj, "dayIDs");
+
 		char dates[7][4] = { "sun","mon","tue","wed","thu","fri","sat" };
 		for (int i = 0; i < 7; i++) {
-			Log_Debug("%s:, ID:%d\n", dates[i], (int)json_object_get_number(days, dates[i]));
-			idArr[i] = (int)json_object_get_number(days, dates[i]);
+			Log_Debug("%s:, ID:%d\n", dates[i], (int)json_object_get_number(dayIDs, dates[i]));
+			idArr[i] = (int)json_object_get_number(dayIDs, dates[i]);
 		}
+		
+		float temporary = (float)json_object_dotget_number(obj, "temporary");
+		if (temporary > 0.0) {
+			startTemporaryTimer = true;
+			userSettings_ptr->temporaryTarget = userSettings_ptr->targetTemp_F;
+			userSettings_ptr->targetTemp_F = temporary;
+			// Sends data to plot the schedule
+			sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
+			sendCURL(URL_STATS, CURLMessageBuffer);
+		}
+
 		json_value_free(raw);
 		free(s.ptr);
 		curl_easy_cleanup(curl);

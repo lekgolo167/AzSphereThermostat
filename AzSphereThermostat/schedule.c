@@ -64,10 +64,9 @@ bool cycleExpired(struct thermostatSettings *userSettings_ptr) {
 		userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
 
 		// Sends data to plot the schedule
-		sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
-		sendCURL(URL_STATS, CURLMessageBuffer);
+		stopTemporaryTimer(userSettings_ptr->targetTemp_F);
 
-		Log_Debug(" -===- loaded cycle is: %d:%d (%.1f F�)\n", loadedCycle->start_hour, loadedCycle->start_min, loadedCycle->temp_F);
+		Log_Debug(" -===- loaded cycle is: %d:%d (%.1f F°)\n", loadedCycle->start_hour, loadedCycle->start_min, loadedCycle->temp_F);
 	}
 	return false;
 }
@@ -108,6 +107,7 @@ bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) 
 						// Update pointers
 						userSettings_ptr->currentCycle = loadedCycle;
 						userSettings_ptr->targetTemp_F = loadedCycle->temp_F;
+						stopTemporaryTimer(userSettings_ptr->targetTemp_F);
 					}
 
 					// Sends data to plot the schedule
@@ -122,3 +122,11 @@ bool checkServerForScheduleUpdates(struct thermostatSettings *userSettings_ptr) 
 		return false;
 	}
 };
+
+void stopTemporaryTimer(float orig_temp) {
+	UnregisterEventHandlerFromEpoll(epollFd, temporaryPollTimerFd);
+	userSettings_ptr->targetTemp_F = orig_temp;
+	// Sends data to plot the schedule
+	sprintf(CURLMessageBuffer, "TARGET=%f&THRESH_L=%f&THRESH_H=%f\0", userSettings_ptr->targetTemp_F, userSettings_ptr->lower_threshold, userSettings_ptr->upper_threshold);
+	sendCURL(URL_STATS, CURLMessageBuffer);
+}

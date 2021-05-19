@@ -8,20 +8,20 @@ float temperatureSamples[20] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 int sampleAverageIndex = 0;
 bool relayON;
 
-void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr)
+void initThermostat(struct thermostatSettings *userSettings_p, struct HDC1080 *HDC1080_sensor_p)
 {
-	userSettings = userSettings_ptr;
+	userSettings = userSettings_p;
 
-	HDC1080_sensor = HDC1080_sensor_ptr;
+	HDC1080_sensor = HDC1080_sensor_p;
 	const struct timespec sleeptime = { 0, 50000000 };
 	while (!HDC1080GetTemperature()) {
 		Log_Debug("failed to get temperature\n");
 		nanosleep(&sleeptime, NULL);
 	};
 
-	Log_Debug("initializing sample arrary with: %f\n", HDC1080_sensor_ptr->temp_F);
+	Log_Debug("initializing sample arrary with: %f\n", HDC1080_sensor_p->temp_F);
 	for (int i = 0; i < 20; i++) {
-		temperatureSamples[i] = HDC1080_sensor_ptr->temp_F;
+		temperatureSamples[i] = HDC1080_sensor_p->temp_F;
 	}
 	averageTemp_F = temperatureSamples[0];
 	relayON = false;

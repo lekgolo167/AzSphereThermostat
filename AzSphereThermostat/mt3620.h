@@ -8,6 +8,16 @@
 #include <applibs/gpio.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include "epoll_timerfd_utilities.h"
+#include "thermostat.h"
+#include "schedule.h"
+#include "HDC1080.h"
+#include "HC-SR04.h"
+#include "oled.h"
+#include "msg.h"
+
+struct HDC1080* HDC1080_sensor_ptr;
+struct thermostatSettings* userSettings_ptr;
 
 extern int ISU_2_Fd;
 extern int GPIO_relay_Fd;
@@ -16,6 +26,14 @@ extern int furnaceRelayStateFd;
 extern int rotary_A_Fd;
 extern int rotary_B_Fd;
 extern int rotary_SW_Fd;
+
+// Timer file descriptors
+static int epollFd = -1;
+static int buttonPollTimerFd = -1;
+static int sensorPollTimerFd = -1;
+static int motionPollTimerFd = -1;
+static int schedulePollTimerFd = -1;
+static int temporaryPollTimerFd = -1;
 
 extern GPIO_Value_Type rotary_A_LastState;
 extern GPIO_Value_Type rotary_B_LastState;
@@ -35,6 +53,7 @@ extern bool edit_oled_menu;
 extern bool oledScreenON;
 
 extern bool reconfigureTimer;
+extern bool startTemporaryTimer;
 
 extern bool CURL_enabled;
 
@@ -53,6 +72,47 @@ char* CURLMessageBuffer[128];
 #define URL_MOTION IP_ADDRESS_AND_PORT "/motion"
 #define URL_RUNTIME IP_ADDRESS_AND_PORT "/runtime"
 #define URL_FURNANCE_STATE IP_ADDRESS_AND_PORT "/furnaceState"
+
+/// <summary>
+///     Handler for the rotary encoder input and buttons A and B
+/// </summary>
+void ButtonTimerEventHandler(EventData* eventData);
+
+/// <summary>
+///     Handler for sensor timer to read temperature and humidity then update the OLED with optional CURL to server
+/// </summary>
+void SensorTimerEventHandler(EventData* eventData);
+
+/// <summary>
+///     Handler for motion timer to read motion sensor
+/// </summary>
+void MotionTimerEventHandler(EventData* eventData);
+
+/// <summary>
+///     Handler for schedule update check timer to update the scheudle from the server
+/// </summary>
+void ScheduleServerCheckEventHandler(EventData* eventData);
+
+void TemporaryTimerEventHandler(EventData* eventData);
+
+// event handler data structures. Only the event handler field needs to be populated.
+static EventData buttonEventData = { .eventHandler = &ButtonTimerEventHandler };
+static EventData sensorEventData = { .eventHandler = &SensorTimerEventHandler };
+static EventData motionEventData = { .eventHandler = &MotionTimerEventHandler };
+static EventData scheduleEventData = { .eventHandler = &ScheduleServerCheckEventHandler };
+static EventData temporaryEventData = { .eventHandler = &TemporaryTimerEventHandler };
+
+/// <summary>
+///     Update the sensor timer if it has been reconfigured
+/// </summary>
+int reconfigureSensorEpollTimer();
+
+int startTemporaryEpollTimer();
+
+/// <summary>
+///     Initializes all of the timer event handlers
+/// </summary>
+int initTimerEventHandlers();
 
 // MT3620 GPIO 0
 #define MT3620_GPIO0 (0)

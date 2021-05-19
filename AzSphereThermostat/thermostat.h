@@ -24,6 +24,7 @@ struct thermostatSettings
 	float lower_threshold;
 	float upper_threshold;
 	float baselineTemp_F;
+	float temporaryTarget;
 	struct timespec samplePeriod;
 	unsigned int totalSamples;
 	unsigned int screenTimeoutSec;
@@ -36,7 +37,7 @@ float averageTemp_F;
 /// <summary>
 ///     This function sets up the struct pointers to run the thermostat
 /// </summary>
-void initThermostat(struct thermostatSettings *userSettings_ptr, struct HDC1080 *HDC1080_sensor_ptr);
+void initThermostat(struct thermostatSettings *userSettings_p, struct HDC1080 *HDC1080_sensor_p);
 
 /// <summary>
 ///     Logic to maintain temperature
